@@ -66,7 +66,7 @@ struct CapturedQuery {
 }
 
 #[derive(Clone)]
-pub struct CaptureStore {
+struct CaptureStore {
     path: PathBuf,
     entries: Arc<Mutex<Vec<CapturedQuery>>>,
 }
@@ -172,7 +172,7 @@ pub struct DatafusionBackend {
 }
 
 impl DatafusionBackend {
-    pub fn new(ctx: Arc<SessionContext>, capture: Option<CaptureStore>) -> Self {
+    fn new(ctx: Arc<SessionContext>, capture: Option<CaptureStore>) -> Self {
         Self {
             ctx,
             query_parser: Arc::new(NoopQueryParser::new()),
