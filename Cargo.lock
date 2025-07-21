@@ -1591,6 +1591,8 @@ dependencies = [
  "df_subquery_udf",
  "env_logger",
  "futures",
+ "hex",
+ "lazy_static",
  "log",
  "once_cell",
  "pgwire",

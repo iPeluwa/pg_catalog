@@ -27,7 +27,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::Path;
-use std::ptr::null;
+
 use std::sync::{Arc, Mutex};
 use zip::ZipArchive;
 
@@ -47,6 +47,12 @@ use crate::user_functions::{
     register_scalar_pg_table_is_visible, register_scalar_pg_tablespace_location,
     register_scalar_regclass_oid, register_scalar_txid_current, register_translate, register_upper,
     register_version_fn,
+};
+
+use crate::pg_catalog_helpers::{
+    load_pg_type_data, load_pg_description_data, 
+    ensure_static_table_oid_consistency, ensure_enhanced_oid_consistency,
+    initialize_system_catalog
 };
 
 use crate::scalar_to_cte::rewrite_subquery_as_cte;
@@ -505,7 +511,7 @@ fn parse_schema_dir(
     for entry in fs::read_dir(dir_path).expect("Failed to read directory") {
         let path = entry.expect("Invalid dir entry").path();
         if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
-            let mut partial = parse_schema_file(path.to_str().unwrap());
+            let partial = parse_schema_file(path.to_str().unwrap());
 
             merge_schema_maps(&mut all, partial);
         }
@@ -754,6 +760,27 @@ fn register_catalogs_from_schemas(
             for (table, (schema_ref, batches)) in tables {
                 log::debug!("-- table {:?}", &table);
 
+                // Apply lazy loading and OID consistency for specific tables
+                if schema_name == "pg_catalog" {
+                    match table.as_str() {
+                        "pg_type" => {
+                            log::info!("Registering pg_type with lazy loading and OID cache");
+                            // Pre-load pg_type data to ensure OID consistency
+                            if let Err(e) = load_pg_type_data() {
+                                log::warn!("Failed to pre-load pg_type data: {}", e);
+                            }
+                        }
+                        "pg_description" => {
+                            log::info!("Registering pg_description with lazy loading and OID cache");
+                            // Pre-load pg_description data to ensure OID consistency
+                            if let Err(e) = load_pg_description_data() {
+                                log::warn!("Failed to pre-load pg_description data: {}", e);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
                 let wrapped =
                     ObservableMemTable::new(table.clone(), schema_ref, log.clone(), batches);
                 schema_provider.register_table(table, Arc::new(wrapped))?;
@@ -855,6 +882,24 @@ pub async fn get_base_session_context(
 
     let catalogs = ctx.catalog_names();
     log::info!("registered catalogs: {:?}", catalogs);
+
+    // Phase 2: Ensure OID consistency across static tables
+    if let Err(e) = ensure_static_table_oid_consistency(&ctx).await {
+        log::warn!("OID consistency check failed: {}", e);
+        // Continue execution - this is not critical for basic functionality
+    }
+
+    // Phase 3: Ensure enhanced OID consistency across dynamic tables
+    if let Err(e) = ensure_enhanced_oid_consistency(&ctx).await {
+        log::warn!("Enhanced OID consistency check failed: {}", e);
+        // Continue execution - this is not critical for basic functionality
+    }
+
+    // Phase 4A: Initialize critical system catalog objects
+    if let Err(e) = initialize_system_catalog(&ctx).await {
+        log::warn!("System catalog initialization failed: {}", e);
+        // Continue execution - this provides enhanced functionality but isn't critical
+    }
 
     // println!("Current catalog: {}", default_catalog);
 

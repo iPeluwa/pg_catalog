@@ -5,7 +5,6 @@
 use arrow::datatypes::DataType as ArrowDataType;
 use datafusion::logical_expr::{create_udf, ColumnarValue, ScalarUDF, Volatility};
 use datafusion::scalar::ScalarValue;
-use std::collections::HashMap;
 use std::ops::ControlFlow;
 
 use datafusion::error::{DataFusionError, Result};
@@ -27,7 +26,7 @@ use sqlparser::tokenizer::Span;
 ///
 /// The function simply returns the passed string value so that
 /// casts such as `'foo'::regclass` can be emulated.
-pub fn regclass_udfs(ctx: &SessionContext) -> Vec<ScalarUDF> {
+pub fn regclass_udfs(_ctx: &SessionContext) -> Vec<ScalarUDF> {
     let regclass = create_udf(
         "regclass",
         vec![ArrowDataType::Utf8],

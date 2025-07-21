@@ -2,7 +2,7 @@
 // Provides functions like oid(), pg_get_array and others so queries behave like PostgreSQL.
 // Added to extend DataFusion with features required by pg_catalog emulation.
 use arrow::array::{
-    as_string_array, Array, ArrayRef, BooleanBuilder, ListArray, StringBuilder,
+    as_string_array, Array, ArrayRef, StringBuilder,
     TimestampMicrosecondArray,
 };
 use arrow::datatypes::DataType as ArrowDataType;
@@ -11,8 +11,7 @@ use datafusion::arrow::array::{Int64Array, Int64Builder};
 use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::catalog::{Session, TableFunctionImpl};
-use datafusion::common::utils::SingleRowListArrayBuilder;
-use datafusion::common::{internal_err, plan_err, ScalarValue};
+use datafusion::common::{plan_err, ScalarValue};
 use datafusion::datasource::memory::MemorySourceConfig;
 use datafusion::datasource::TableProvider;
 use datafusion::error::{DataFusionError, Result};
@@ -420,7 +419,7 @@ pub fn register_scalar_pg_get_partkeydef(ctx: &SessionContext) -> Result<()> {
         let arrays = ColumnarValue::values_to_arrays(args)?;
         let oids = as_int64_array(&arrays[0])?;
         let mut builder = StringBuilder::new();
-        for i in 0..oids.len() {
+        for _i in 0..oids.len() {
             builder.append_null();
         }
         Ok(ColumnarValue::Array(Arc::new(builder.finish()) as ArrayRef))
@@ -444,7 +443,7 @@ pub fn register_pg_get_statisticsobjdef_columns(ctx: &SessionContext) -> Result<
         let arrays = ColumnarValue::values_to_arrays(args)?;
         let oids = as_int64_array(&arrays[0])?;
         let mut builder = StringBuilder::new();
-        for i in 0..oids.len() {
+        for _i in 0..oids.len() {
             builder.append_null();
         }
         Ok(ColumnarValue::Array(Arc::new(builder.finish()) as ArrayRef))
@@ -2048,7 +2047,6 @@ mod tests {
     use datafusion::catalog::{CatalogProvider, SchemaProvider};
     use datafusion::datasource::MemTable;
     use datafusion::error::Result;
-    use datafusion::prelude::*;
     use std::sync::Arc;
 
     /* TODO:
@@ -2065,7 +2063,7 @@ mod tests {
      */
 
     async fn make_ctx() -> Result<SessionContext> {
-        let mut config = datafusion::execution::context::SessionConfig::new()
+        let config = datafusion::execution::context::SessionConfig::new()
             .with_default_catalog_and_schema("public", "pg_catalog");
 
         let ctx = SessionContext::new_with_config(config);
@@ -2217,6 +2215,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_pg_get_array_constant() -> Result<()> {
+        use arrow::array::ListArray;
+        
         let ctx = make_ctx().await?;
         let batches = ctx
             .sql("SELECT pg_get_array('hello') AS v;")
@@ -2236,6 +2236,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_pg_get_array_subquery() -> Result<()> {
+        use arrow::array::ListArray;
+        
         let ctx = make_ctx().await?;
 
         let sql = rewrite_subquery_as_cte(
