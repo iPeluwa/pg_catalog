@@ -51,6 +51,7 @@ use crate::user_functions::{
 
 use crate::pg_catalog_helpers::{
     load_pg_type_data, load_pg_description_data, 
+    get_pg_type_batches, get_pg_description_batches,
     ensure_static_table_oid_consistency, ensure_enhanced_oid_consistency,
     initialize_system_catalog
 };
@@ -761,13 +762,30 @@ fn register_catalogs_from_schemas(
                 log::debug!("-- table {:?}", &table);
 
                 // Apply lazy loading and OID consistency for specific tables
-                if schema_name == "pg_catalog" {
+                let final_batches = if schema_name == "pg_catalog" {
                     match table.as_str() {
                         "pg_type" => {
                             log::info!("Registering pg_type with lazy loading and OID cache");
                             // Pre-load pg_type data to ensure OID consistency
                             if let Err(e) = load_pg_type_data() {
                                 log::warn!("Failed to pre-load pg_type data: {}", e);
+                                batches  // Use original batches if loading fails
+                            } else {
+                                // Retrieve cached data after loading
+                                match get_pg_type_batches() {
+                                    Ok(Some(cached_batches)) => {
+                                        log::debug!("Using cached pg_type data with {} batches", cached_batches.len());
+                                        cached_batches
+                                    }
+                                    Ok(None) => {
+                                        log::warn!("No cached pg_type data found, using original batches");
+                                        batches
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Failed to get cached pg_type data: {}, using original", e);
+                                        batches
+                                    }
+                                }
                             }
                         }
                         "pg_description" => {
@@ -775,14 +793,33 @@ fn register_catalogs_from_schemas(
                             // Pre-load pg_description data to ensure OID consistency
                             if let Err(e) = load_pg_description_data() {
                                 log::warn!("Failed to pre-load pg_description data: {}", e);
+                                batches  // Use original batches if loading fails
+                            } else {
+                                // Retrieve cached data after loading
+                                match get_pg_description_batches() {
+                                    Ok(Some(cached_batches)) => {
+                                        log::debug!("Using cached pg_description data with {} batches", cached_batches.len());
+                                        cached_batches
+                                    }
+                                    Ok(None) => {
+                                        log::warn!("No cached pg_description data found, using original batches");
+                                        batches
+                                    }
+                                    Err(e) => {
+                                        log::warn!("Failed to get cached pg_description data: {}, using original", e);
+                                        batches
+                                    }
+                                }
                             }
                         }
-                        _ => {}
+                        _ => batches
                     }
-                }
+                } else {
+                    batches
+                };
 
                 let wrapped =
-                    ObservableMemTable::new(table.clone(), schema_ref, log.clone(), batches);
+                    ObservableMemTable::new(table.clone(), schema_ref, log.clone(), final_batches);
                 schema_provider.register_table(table, Arc::new(wrapped))?;
             }
         }

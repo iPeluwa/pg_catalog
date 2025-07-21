@@ -607,6 +607,28 @@ pub fn load_pg_type_data() -> DFResult<()> {
     Ok(())
 }
 
+/// Get cached pg_type data after loading
+pub fn get_pg_type_batches() -> DFResult<Option<Vec<arrow::record_batch::RecordBatch>>> {
+    let data = PG_TYPE_DATA.lock().unwrap();
+    if let Some(ref cached_data) = *data {
+        if let Some((_, batches)) = cached_data.get("pg_type") {
+            return Ok(Some(batches.clone()));
+        }
+    }
+    Ok(None)
+}
+
+/// Get cached pg_description data after loading
+pub fn get_pg_description_batches() -> DFResult<Option<Vec<arrow::record_batch::RecordBatch>>> {
+    let data = PG_DESCRIPTION_DATA.lock().unwrap();
+    if let Some(ref cached_data) = *data {
+        if let Some((_, batches)) = cached_data.get("pg_description") {
+            return Ok(Some(batches.clone()));
+        }
+    }
+    Ok(None)
+}
+
 /// Lazy load pg_description data from YAML file with optimized parsing
 pub fn load_pg_description_data() -> DFResult<()> {
     let mut data = PG_DESCRIPTION_DATA.lock().unwrap();
