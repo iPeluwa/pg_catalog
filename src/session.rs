@@ -50,9 +50,7 @@ use crate::user_functions::{
 };
 
 use crate::pg_catalog_helpers::{
-    ensure_enhanced_oid_consistency, ensure_static_table_oid_consistency,
-    get_pg_description_batches, get_pg_type_batches, initialize_system_catalog,
-    load_pg_description_data, load_pg_type_data,
+    ensure_static_table_oid_consistency, initialize_system_catalog,
 };
 
 use crate::scalar_to_cte::rewrite_subquery_as_cte;
@@ -760,78 +758,8 @@ fn register_catalogs_from_schemas(
             for (table, (schema_ref, batches)) in tables {
                 log::debug!("-- table {:?}", &table);
 
-                // Apply lazy loading and OID consistency for specific tables
-                let final_batches = if schema_name == "pg_catalog" {
-                    match table.as_str() {
-                        "pg_type" => {
-                            log::info!("Registering pg_type with lazy loading and OID cache");
-                            // Pre-load pg_type data to ensure OID consistency
-                            if let Err(e) = load_pg_type_data() {
-                                log::warn!("Failed to pre-load pg_type data: {}", e);
-                                batches // Use original batches if loading fails
-                            } else {
-                                // Retrieve cached data after loading
-                                match get_pg_type_batches() {
-                                    Ok(Some(cached_batches)) => {
-                                        log::debug!(
-                                            "Using cached pg_type data with {} batches",
-                                            cached_batches.len()
-                                        );
-                                        cached_batches
-                                    }
-                                    Ok(None) => {
-                                        log::warn!(
-                                            "No cached pg_type data found, using original batches"
-                                        );
-                                        batches
-                                    }
-                                    Err(e) => {
-                                        log::warn!(
-                                            "Failed to get cached pg_type data: {}, using original",
-                                            e
-                                        );
-                                        batches
-                                    }
-                                }
-                            }
-                        }
-                        "pg_description" => {
-                            log::info!(
-                                "Registering pg_description with lazy loading and OID cache"
-                            );
-                            // Pre-load pg_description data to ensure OID consistency
-                            if let Err(e) = load_pg_description_data() {
-                                log::warn!("Failed to pre-load pg_description data: {}", e);
-                                batches // Use original batches if loading fails
-                            } else {
-                                // Retrieve cached data after loading
-                                match get_pg_description_batches() {
-                                    Ok(Some(cached_batches)) => {
-                                        log::debug!(
-                                            "Using cached pg_description data with {} batches",
-                                            cached_batches.len()
-                                        );
-                                        cached_batches
-                                    }
-                                    Ok(None) => {
-                                        log::warn!("No cached pg_description data found, using original batches");
-                                        batches
-                                    }
-                                    Err(e) => {
-                                        log::warn!("Failed to get cached pg_description data: {}, using original", e);
-                                        batches
-                                    }
-                                }
-                            }
-                        }
-                        _ => batches,
-                    }
-                } else {
-                    batches
-                };
-
                 let wrapped =
-                    ObservableMemTable::new(table.clone(), schema_ref, log.clone(), final_batches);
+                    ObservableMemTable::new(table.clone(), schema_ref, log.clone(), batches);
                 schema_provider.register_table(table, Arc::new(wrapped))?;
             }
         }
@@ -938,11 +866,7 @@ pub async fn get_base_session_context(
         // Continue execution - this is not critical for basic functionality
     }
 
-    // Phase 3: Ensure enhanced OID consistency across dynamic tables
-    if let Err(e) = ensure_enhanced_oid_consistency(&ctx).await {
-        log::warn!("Enhanced OID consistency check failed: {}", e);
-        // Continue execution - this is not critical for basic functionality
-    }
+
 
     // Phase 4A: Initialize critical system catalog objects
     if let Err(e) = initialize_system_catalog(&ctx).await {

@@ -2,10 +2,10 @@ use arrow::array::Int64Array;
 use datafusion::common::ScalarValue;
 use datafusion::error::{DataFusionError, Result as DFResult};
 use datafusion::execution::context::SessionContext;
-use once_cell::sync::Lazy;
+
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
-use std::fs;
+
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Mutex;
 
@@ -485,34 +485,7 @@ lazy_static::lazy_static! {
     static ref SUBSCRIPTION_REL_CACHE: Mutex<HashMap<(i32, i32), SubscriptionRelMetadata>> = Mutex::new(HashMap::new());
 }
 
-// Lazy loading for large static tables to improve startup time
-static PG_TYPE_DATA: Lazy<
-    Mutex<
-        Option<
-            HashMap<
-                String,
-                (
-                    arrow::datatypes::SchemaRef,
-                    Vec<arrow::record_batch::RecordBatch>,
-                ),
-            >,
-        >,
-    >,
-> = Lazy::new(|| Mutex::new(None));
 
-static PG_DESCRIPTION_DATA: Lazy<
-    Mutex<
-        Option<
-            HashMap<
-                String,
-                (
-                    arrow::datatypes::SchemaRef,
-                    Vec<arrow::record_batch::RecordBatch>,
-                ),
-            >,
-        >,
-    >,
-> = Lazy::new(|| Mutex::new(None));
 
 const STATIC_OID_RANGE_MAX: i32 = 50000;
 const DYNAMIC_OID_RANGE_MIN: i32 = 50010;
@@ -574,158 +547,8 @@ pub fn get_or_allocate_description_oid(objoid: i32, classoid: i32, objsubid: i32
     Ok(new_oid)
 }
 
-/// Lazy load pg_type data from YAML file with optimized parsing
-pub fn load_pg_type_data() -> DFResult<()> {
-    let mut data = PG_TYPE_DATA.lock().unwrap();
-    if data.is_none() {
-        let start = std::time::Instant::now();
-        log::info!("Lazy loading pg_type data...");
 
-        let contents = fs::read_to_string("pg_catalog_data/pg_schema/pg_catalog__pg_type.yaml")
-            .map_err(|e| {
-                DataFusionError::Execution(format!("Failed to read pg_type.yaml: {}", e))
-            })?;
 
-        // Optimized YAML parsing - parse directly into structured data
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents).map_err(|e| {
-            DataFusionError::Execution(format!("Failed to parse pg_type.yaml: {}", e))
-        })?;
-
-        // Extract and process table data with OID consistency
-        let mut tables = HashMap::new();
-        if let Some(public_schema) = parsed.get("public").and_then(|p| p.get("pg_catalog")) {
-            if let Some(pg_type_def) = public_schema.get("pg_type") {
-                // Process pg_type table definition
-                if let Some(rows) = pg_type_def.get("rows") {
-                    let row_count = rows.as_sequence().map(|s| s.len()).unwrap_or(0);
-                    log::info!("Processing {} pg_type rows with OID consistency", row_count);
-
-                    // Pre-populate OID cache for all types to ensure consistency
-                    if let Some(rows_seq) = rows.as_sequence() {
-                        for row in rows_seq {
-                            if let Some(typname) = row.get("typname").and_then(|n| n.as_str()) {
-                                if let Some(oid) = row.get("oid").and_then(|o| o.as_i64()) {
-                                    // Validate static OID range
-                                    validate_oid_range(oid as i32, true)?;
-
-                                    // Pre-populate cache with static OIDs
-                                    let mut cache = TYPE_OID_CACHE.lock().unwrap();
-                                    cache.insert(typname.to_string(), oid as i32);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Store optimized table data (placeholder for now)
-                tables.insert(
-                    "pg_type".to_string(),
-                    (
-                        arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
-                        Vec::new(),
-                    ),
-                );
-            }
-        }
-
-        *data = Some(tables);
-        let duration = start.elapsed();
-        log::info!("pg_type data loaded successfully in {:?}", duration);
-    }
-    Ok(())
-}
-
-/// Get cached pg_type data after loading
-pub fn get_pg_type_batches() -> DFResult<Option<Vec<arrow::record_batch::RecordBatch>>> {
-    let data = PG_TYPE_DATA.lock().unwrap();
-    if let Some(ref cached_data) = *data {
-        if let Some((_, batches)) = cached_data.get("pg_type") {
-            return Ok(Some(batches.clone()));
-        }
-    }
-    Ok(None)
-}
-
-/// Get cached pg_description data after loading
-pub fn get_pg_description_batches() -> DFResult<Option<Vec<arrow::record_batch::RecordBatch>>> {
-    let data = PG_DESCRIPTION_DATA.lock().unwrap();
-    if let Some(ref cached_data) = *data {
-        if let Some((_, batches)) = cached_data.get("pg_description") {
-            return Ok(Some(batches.clone()));
-        }
-    }
-    Ok(None)
-}
-
-/// Lazy load pg_description data from YAML file with optimized parsing
-pub fn load_pg_description_data() -> DFResult<()> {
-    let mut data = PG_DESCRIPTION_DATA.lock().unwrap();
-    if data.is_none() {
-        let start = std::time::Instant::now();
-        log::info!("Lazy loading pg_description data...");
-
-        let contents =
-            fs::read_to_string("pg_catalog_data/pg_schema/pg_catalog__pg_description.yaml")
-                .map_err(|e| {
-                    DataFusionError::Execution(format!("Failed to read pg_description.yaml: {}", e))
-                })?;
-
-        // Optimized YAML parsing for large description data
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents).map_err(|e| {
-            DataFusionError::Execution(format!("Failed to parse pg_description.yaml: {}", e))
-        })?;
-
-        // Extract and process table data with OID consistency
-        let mut tables = HashMap::new();
-        if let Some(public_schema) = parsed.get("public").and_then(|p| p.get("pg_catalog")) {
-            if let Some(pg_desc_def) = public_schema.get("pg_description") {
-                // Process pg_description table definition
-                if let Some(rows) = pg_desc_def.get("rows") {
-                    let row_count = rows.as_sequence().map(|s| s.len()).unwrap_or(0);
-                    log::info!(
-                        "Processing {} pg_description rows with OID consistency",
-                        row_count
-                    );
-
-                    // Pre-populate OID cache for all description entries
-                    if let Some(rows_seq) = rows.as_sequence() {
-                        for row in rows_seq {
-                            if let (Some(objoid), Some(classoid), Some(objsubid)) = (
-                                row.get("objoid").and_then(|o| o.as_i64()),
-                                row.get("classoid").and_then(|c| c.as_i64()),
-                                row.get("objsubid").and_then(|s| s.as_i64()),
-                            ) {
-                                // Pre-populate description cache with consistent OIDs
-                                let key = (objoid as i32, classoid as i32, objsubid as i32);
-                                let mut cache = DESCRIPTION_OID_CACHE.lock().unwrap();
-
-                                // Use a synthetic OID for description entries (they don't have their own OIDs in the data)
-                                // We'll generate them consistently based on the key
-                                let desc_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
-                                validate_oid_range(desc_oid, false)?;
-                                cache.insert(key, desc_oid);
-                            }
-                        }
-                    }
-                }
-
-                // Store optimized table data (placeholder for now)
-                tables.insert(
-                    "pg_description".to_string(),
-                    (
-                        arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
-                        Vec::new(),
-                    ),
-                );
-            }
-        }
-
-        *data = Some(tables);
-        let duration = start.elapsed();
-        log::info!("pg_description data loaded successfully in {:?}", duration);
-    }
-    Ok(())
-}
 
 /// Apply OID cache to pg_type entries during registration
 pub async fn register_pg_type_with_oid_cache(
@@ -733,8 +556,7 @@ pub async fn register_pg_type_with_oid_cache(
     type_name: &str,
     _type_def: &serde_yaml::Value,
 ) -> DFResult<()> {
-    // Ensure lazy loading is complete
-    load_pg_type_data()?;
+
 
     // Get consistent OID for this type
     let type_oid = get_or_allocate_type_oid(type_name)?;
@@ -774,8 +596,7 @@ pub async fn register_pg_description_with_oid_cache(
     objsubid: i32,
     description: &str,
 ) -> DFResult<()> {
-    // Ensure lazy loading is complete
-    load_pg_description_data()?;
+
 
     // Get consistent OID for this description entry
     let desc_oid = get_or_allocate_description_oid(objoid, classoid, objsubid)?;
@@ -809,9 +630,7 @@ pub async fn register_pg_description_with_oid_cache(
 pub async fn ensure_static_table_oid_consistency(ctx: &SessionContext) -> DFResult<()> {
     log::info!("Ensuring OID consistency across static table references...");
 
-    // Pre-load all static tables to populate caches
-    load_pg_type_data()?;
-    load_pg_description_data()?;
+
 
     // Verify OID consistency between related tables
     // For example, ensure pg_type OIDs are consistently referenced in other tables
@@ -3363,27 +3182,7 @@ mod tests {
         assert_ne!(desc1_oid1, desc2_oid);
     }
 
-    #[test]
-    fn test_lazy_loading_initialization() {
-        // Test that lazy loading structures are properly initialized
-        assert!(PG_TYPE_DATA.lock().unwrap().is_none());
-        assert!(PG_DESCRIPTION_DATA.lock().unwrap().is_none());
 
-        // Test lazy loading functions don't panic on missing files
-        // In real usage, files would exist, but for testing we handle gracefully
-        let result = load_pg_type_data();
-        // Result depends on whether test has access to YAML files
-        match result {
-            Ok(_) => {
-                // If files exist, should be loaded
-                assert!(PG_TYPE_DATA.lock().unwrap().is_some());
-            }
-            Err(_) => {
-                // If files don't exist, should remain None
-                assert!(PG_TYPE_DATA.lock().unwrap().is_none());
-            }
-        }
-    }
 
     #[test]
     fn test_oid_range_validation_edge_cases() {
