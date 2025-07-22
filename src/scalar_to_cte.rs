@@ -1168,7 +1168,8 @@ mod rewriter {
             // ---------- 1st pass: collect what needs rewriting ----------
             let mut collected = Vec::<(usize, CorrelatedInfo)>::new();
             for (idx, item) in sel.projection.iter().enumerate() {
-                if let SelectItem::UnnamedExpr(_e) | SelectItem::ExprWithAlias { expr: _e, .. } = item
+                if let SelectItem::UnnamedExpr(_e) | SelectItem::ExprWithAlias { expr: _e, .. } =
+                    item
                 {
                     if let Some(info) = self.analyse_scalar(item, &outer_aliases) {
                         collected.push((idx, info));

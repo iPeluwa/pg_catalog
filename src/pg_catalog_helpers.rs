@@ -2,12 +2,12 @@ use arrow::array::Int64Array;
 use datafusion::common::ScalarValue;
 use datafusion::error::{DataFusionError, Result as DFResult};
 use datafusion::execution::context::SessionContext;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
+use std::fs;
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::Mutex;
-use once_cell::sync::Lazy;
-use std::fs;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ColumnDef {
@@ -181,75 +181,75 @@ pub struct DefaultAclMetadata {
     pub oid: i32,
     pub defaclrole: i32,        // OID of role whose objects get these ACLs
     pub defaclnamespace: i32,   // OID of namespace these ACLs apply to (0 for all)
-    pub defaclobjtype: char,    // Object type: 'r' = relation, 'S' = sequence, 'f' = function, 'T' = type
+    pub defaclobjtype: char, // Object type: 'r' = relation, 'S' = sequence, 'f' = function, 'T' = type
     pub defaclacl: Vec<String>, // Access privileges in ACL format
 }
 
 #[derive(Debug, Clone)]
 pub struct InitPrivsMetadata {
-    pub objoid: i32,         // OID of the object
-    pub classoid: i32,       // OID of the system catalog containing the object
-    pub objsubid: i32,       // Column number for column privileges, 0 for object
-    pub privtype: char,      // Type of initial privilege (e = extension, i = initdb)
+    pub objoid: i32,            // OID of the object
+    pub classoid: i32,          // OID of the system catalog containing the object
+    pub objsubid: i32,          // Column number for column privileges, 0 for object
+    pub privtype: char,         // Type of initial privilege (e = extension, i = initdb)
     pub initprivs: Vec<String>, // Initial access privileges in ACL format
 }
 
 #[derive(Debug, Clone)]
 pub struct SecLabelMetadata {
-    pub objoid: i32,         // OID of the object this label is for
-    pub classoid: i32,       // OID of the system catalog containing the object
-    pub objsubid: i32,       // Column number for column labels, 0 for object
-    pub provider: String,    // Label provider (e.g., selinux)
-    pub label: String,       // Security label value
+    pub objoid: i32,      // OID of the object this label is for
+    pub classoid: i32,    // OID of the system catalog containing the object
+    pub objsubid: i32,    // Column number for column labels, 0 for object
+    pub provider: String, // Label provider (e.g., selinux)
+    pub label: String,    // Security label value
 }
 
 /// Advanced Table Features Metadata
 
 #[derive(Debug, Clone)]
 pub struct PartitionedTableMetadata {
-    pub partrelid: i32,           // OID of the partitioned table
-    pub partstrat: char,          // Partitioning strategy: 'h' = hash, 'l' = list, 'r' = range
-    pub partnatts: i16,           // Number of partitioning columns
-    pub partdefid: i32,           // OID of the default partition (0 if none)
-    pub partattrs: Vec<i16>,      // Array of partitioning column numbers
-    pub partclass: Vec<i32>,      // Array of operator class OIDs for partitioning columns
-    pub partcollation: Vec<i32>,  // Array of collation OIDs for partitioning columns
+    pub partrelid: i32,            // OID of the partitioned table
+    pub partstrat: char,           // Partitioning strategy: 'h' = hash, 'l' = list, 'r' = range
+    pub partnatts: i16,            // Number of partitioning columns
+    pub partdefid: i32,            // OID of the default partition (0 if none)
+    pub partattrs: Vec<i16>,       // Array of partitioning column numbers
+    pub partclass: Vec<i32>,       // Array of operator class OIDs for partitioning columns
+    pub partcollation: Vec<i32>,   // Array of collation OIDs for partitioning columns
     pub partexprs: Option<String>, // Partitioning expressions (serialized)
 }
 
 #[derive(Debug, Clone)]
 pub struct EventTriggerMetadata {
     pub oid: i32,
-    pub evtname: String,          // Event trigger name
-    pub evtevent: String,         // Event name (ddl_command_start, ddl_command_end, table_rewrite, sql_drop)
-    pub evtowner: i32,            // OID of owner
-    pub evtfoid: i32,             // OID of trigger function
-    pub evtenabled: char,         // Enabled state: 'O' = origin, 'D' = disabled, 'R' = replica, 'A' = always
-    pub evttags: Vec<String>,     // Array of command tags (empty array = all commands)
+    pub evtname: String,      // Event trigger name
+    pub evtevent: String, // Event name (ddl_command_start, ddl_command_end, table_rewrite, sql_drop)
+    pub evtowner: i32,    // OID of owner
+    pub evtfoid: i32,     // OID of trigger function
+    pub evtenabled: char, // Enabled state: 'O' = origin, 'D' = disabled, 'R' = replica, 'A' = always
+    pub evttags: Vec<String>, // Array of command tags (empty array = all commands)
 }
 
 #[derive(Debug, Clone)]
 pub struct UserMappingMetadata {
     pub oid: i32,
-    pub umuser: i32,              // OID of user (0 for public)
-    pub umserver: i32,            // OID of foreign server
-    pub umoptions: Vec<String>,   // User mapping options in "key=value" format
+    pub umuser: i32,            // OID of user (0 for public)
+    pub umserver: i32,          // OID of foreign server
+    pub umoptions: Vec<String>, // User mapping options in "key=value" format
 }
 
 /// Large Object Support Metadata
 
 #[derive(Debug, Clone)]
 pub struct LargeObjectMetadata {
-    pub oid: i32,                 // Large object OID
-    pub lomowner: i32,            // OID of owner
-    pub lomacl: Vec<String>,      // Access privileges
+    pub oid: i32,            // Large object OID
+    pub lomowner: i32,       // OID of owner
+    pub lomacl: Vec<String>, // Access privileges
 }
 
 #[derive(Debug, Clone)]
 pub struct LargeObjectDataMetadata {
-    pub loid: i32,                // Large object OID
-    pub pageno: i32,              // Page number within large object
-    pub data: Vec<u8>,            // Page data (up to 2KB)
+    pub loid: i32,     // Large object OID
+    pub pageno: i32,   // Page number within large object
+    pub data: Vec<u8>, // Page data (up to 2KB)
 }
 
 /// Text Search System Metadata
@@ -257,41 +257,41 @@ pub struct LargeObjectDataMetadata {
 #[derive(Debug, Clone)]
 pub struct TextSearchConfigMetadata {
     pub oid: i32,
-    pub cfgname: String,          // Configuration name
-    pub cfgnamespace: i32,        // Namespace OID
-    pub cfgowner: i32,            // Owner OID
-    pub cfgparser: i32,           // Parser OID
+    pub cfgname: String,   // Configuration name
+    pub cfgnamespace: i32, // Namespace OID
+    pub cfgowner: i32,     // Owner OID
+    pub cfgparser: i32,    // Parser OID
 }
 
 #[derive(Debug, Clone)]
 pub struct TextSearchDictMetadata {
     pub oid: i32,
-    pub dictname: String,         // Dictionary name
-    pub dictnamespace: i32,       // Namespace OID
-    pub dictowner: i32,           // Owner OID
-    pub dicttemplate: i32,        // Template OID
+    pub dictname: String,               // Dictionary name
+    pub dictnamespace: i32,             // Namespace OID
+    pub dictowner: i32,                 // Owner OID
+    pub dicttemplate: i32,              // Template OID
     pub dictinitoption: Option<String>, // Initialization options
 }
 
 #[derive(Debug, Clone)]
 pub struct TextSearchParserMetadata {
     pub oid: i32,
-    pub prsname: String,          // Parser name
-    pub prsnamespace: i32,        // Namespace OID
-    pub prsstart: i32,            // Start function OID
-    pub prstoken: i32,            // Token function OID
-    pub prsend: i32,              // End function OID
-    pub prslextype: i32,          // Lexeme type function OID
-    pub prsheadline: i32,         // Headline function OID
+    pub prsname: String,   // Parser name
+    pub prsnamespace: i32, // Namespace OID
+    pub prsstart: i32,     // Start function OID
+    pub prstoken: i32,     // Token function OID
+    pub prsend: i32,       // End function OID
+    pub prslextype: i32,   // Lexeme type function OID
+    pub prsheadline: i32,  // Headline function OID
 }
 
 #[derive(Debug, Clone)]
 pub struct TextSearchTemplateMetadata {
     pub oid: i32,
-    pub tmplname: String,         // Template name
-    pub tmplnamespace: i32,       // Namespace OID
-    pub tmplinit: i32,            // Init function OID
-    pub tmpllexize: i32,          // Lexize function OID
+    pub tmplname: String,   // Template name
+    pub tmplnamespace: i32, // Namespace OID
+    pub tmplinit: i32,      // Init function OID
+    pub tmpllexize: i32,    // Lexize function OID
 }
 
 /// Extended Statistics Metadata
@@ -304,39 +304,39 @@ pub struct ExtendedStatisticMetadata {
     pub stxnamespace: i32,        // Namespace OID
     pub stxowner: i32,            // Owner OID
     pub stxkeys: Vec<i16>,        // Column numbers
-    pub stxkind: Vec<char>,       // Statistics kinds: 'd' = ndistinct, 'f' = functional deps, 'm' = MCV, 'e' = expression
+    pub stxkind: Vec<char>, // Statistics kinds: 'd' = ndistinct, 'f' = functional deps, 'm' = MCV, 'e' = expression
     pub stxexprs: Option<String>, // Expressions (serialized)
 }
 
 #[derive(Debug, Clone)]
 pub struct ExtendedStatisticDataMetadata {
-    pub stxoid: i32,              // Statistics object OID
-    pub stxdinherit: bool,        // True if inherited statistics
-    pub stxdndistinct: Option<String>, // N-distinct statistics data
+    pub stxoid: i32,                      // Statistics object OID
+    pub stxdinherit: bool,                // True if inherited statistics
+    pub stxdndistinct: Option<String>,    // N-distinct statistics data
     pub stxddependencies: Option<String>, // Functional dependencies data
-    pub stxdmcv: Option<String>,  // Most Common Values data
-    pub stxdexpr: Option<String>, // Expression statistics data
+    pub stxdmcv: Option<String>,          // Most Common Values data
+    pub stxdexpr: Option<String>,         // Expression statistics data
 }
 
 /// Replication Features Metadata
 
 #[derive(Debug, Clone)]
 pub struct PublicationNamespaceMetadata {
-    pub pnpubid: i32,             // Publication OID
-    pub pnnspid: i32,             // Namespace OID
+    pub pnpubid: i32, // Publication OID
+    pub pnnspid: i32, // Namespace OID
 }
 
 #[derive(Debug, Clone)]
 pub struct ReplicationOriginMetadata {
-    pub roident: i32,             // Origin identifier
-    pub roname: String,           // Origin name
+    pub roident: i32,   // Origin identifier
+    pub roname: String, // Origin name
 }
 
 #[derive(Debug, Clone)]
 pub struct SubscriptionRelMetadata {
     pub srsubid: i32,             // Subscription OID
     pub srrelid: i32,             // Relation OID
-    pub srsubstate: char,         // Subscription state: 'i' = initialize, 'd' = data copy, 's' = synchronized, 'r' = ready
+    pub srsubstate: char, // Subscription state: 'i' = initialize, 'd' = data copy, 's' = synchronized, 'r' = ready
     pub srsublsn: Option<String>, // LSN of the subscription
 }
 
@@ -415,55 +415,55 @@ static NEXT_OID: AtomicI32 = AtomicI32::new(50010);
 lazy_static::lazy_static! {
     static ref TYPE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref DESCRIPTION_OID_CACHE: Mutex<HashMap<(i32, i32, i32), i32>> = Mutex::new(HashMap::new());
-    
+
     // Phase 3: Enhanced dynamic table caches
     static ref CONSTRAINT_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref INDEX_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref DEPENDENCY_OID_CACHE: Mutex<HashMap<(i32, i32), i32>> = Mutex::new(HashMap::new());
-    
+
     // Enhanced metadata cache for complete table information
     static ref TABLE_METADATA_CACHE: Mutex<HashMap<i32, EnhancedTableMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4A: Critical catalog table caches
     static ref DATABASE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref TABLESPACE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref USER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4A: Enhanced metadata caches
     static ref DATABASE_METADATA_CACHE: Mutex<HashMap<i32, DatabaseMetadata>> = Mutex::new(HashMap::new());
     static ref TABLESPACE_METADATA_CACHE: Mutex<HashMap<i32, TablespaceMetadata>> = Mutex::new(HashMap::new());
     static ref USER_METADATA_CACHE: Mutex<HashMap<i32, UserMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4B: High priority table caches
     static ref FUNCTION_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref OPERATOR_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref AGGREGATE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref TRIGGER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4B: Enhanced metadata caches
     static ref FUNCTION_METADATA_CACHE: Mutex<HashMap<i32, FunctionMetadata>> = Mutex::new(HashMap::new());
     static ref OPERATOR_METADATA_CACHE: Mutex<HashMap<i32, OperatorMetadata>> = Mutex::new(HashMap::new());
     static ref AGGREGATE_METADATA_CACHE: Mutex<HashMap<i32, AggregateMetadata>> = Mutex::new(HashMap::new());
     static ref TRIGGER_METADATA_CACHE: Mutex<HashMap<i32, TriggerMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Security and access control caches
     static ref AUTH_MEMBER_CACHE: Mutex<HashMap<(i32, i32), AuthMemberMetadata>> = Mutex::new(HashMap::new());
     static ref DEFAULT_ACL_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref DEFAULT_ACL_CACHE: Mutex<HashMap<i32, DefaultAclMetadata>> = Mutex::new(HashMap::new());
     static ref INIT_PRIVS_CACHE: Mutex<HashMap<(i32, i32, i32), InitPrivsMetadata>> = Mutex::new(HashMap::new());
     static ref SEC_LABEL_CACHE: Mutex<HashMap<(i32, i32, i32, String), SecLabelMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Advanced table features caches
     static ref PARTITIONED_TABLE_CACHE: Mutex<HashMap<i32, PartitionedTableMetadata>> = Mutex::new(HashMap::new());
     static ref EVENT_TRIGGER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref EVENT_TRIGGER_CACHE: Mutex<HashMap<i32, EventTriggerMetadata>> = Mutex::new(HashMap::new());
     static ref USER_MAPPING_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref USER_MAPPING_CACHE: Mutex<HashMap<i32, UserMappingMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Large object caches
     static ref LARGE_OBJECT_CACHE: Mutex<HashMap<i32, LargeObjectMetadata>> = Mutex::new(HashMap::new());
     static ref LARGE_OBJECT_DATA_CACHE: Mutex<HashMap<(i32, i32), LargeObjectDataMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Text search system caches
     static ref TS_CONFIG_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref TS_CONFIG_CACHE: Mutex<HashMap<i32, TextSearchConfigMetadata>> = Mutex::new(HashMap::new());
@@ -473,12 +473,12 @@ lazy_static::lazy_static! {
     static ref TS_PARSER_CACHE: Mutex<HashMap<i32, TextSearchParserMetadata>> = Mutex::new(HashMap::new());
     static ref TS_TEMPLATE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref TS_TEMPLATE_CACHE: Mutex<HashMap<i32, TextSearchTemplateMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Extended statistics caches
     static ref EXT_STATS_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
     static ref EXT_STATS_CACHE: Mutex<HashMap<i32, ExtendedStatisticMetadata>> = Mutex::new(HashMap::new());
     static ref EXT_STATS_DATA_CACHE: Mutex<HashMap<i32, ExtendedStatisticDataMetadata>> = Mutex::new(HashMap::new());
-    
+
     // Phase 4C: Replication features caches
     static ref PUB_NAMESPACE_CACHE: Mutex<HashMap<(i32, i32), PublicationNamespaceMetadata>> = Mutex::new(HashMap::new());
     static ref REPLICATION_ORIGIN_CACHE: Mutex<HashMap<String, ReplicationOriginMetadata>> = Mutex::new(HashMap::new());
@@ -486,11 +486,33 @@ lazy_static::lazy_static! {
 }
 
 // Lazy loading for large static tables to improve startup time
-static PG_TYPE_DATA: Lazy<Mutex<Option<HashMap<String, (arrow::datatypes::SchemaRef, Vec<arrow::record_batch::RecordBatch>)>>>> = 
-    Lazy::new(|| Mutex::new(None));
+static PG_TYPE_DATA: Lazy<
+    Mutex<
+        Option<
+            HashMap<
+                String,
+                (
+                    arrow::datatypes::SchemaRef,
+                    Vec<arrow::record_batch::RecordBatch>,
+                ),
+            >,
+        >,
+    >,
+> = Lazy::new(|| Mutex::new(None));
 
-static PG_DESCRIPTION_DATA: Lazy<Mutex<Option<HashMap<String, (arrow::datatypes::SchemaRef, Vec<arrow::record_batch::RecordBatch>)>>>> = 
-    Lazy::new(|| Mutex::new(None));
+static PG_DESCRIPTION_DATA: Lazy<
+    Mutex<
+        Option<
+            HashMap<
+                String,
+                (
+                    arrow::datatypes::SchemaRef,
+                    Vec<arrow::record_batch::RecordBatch>,
+                ),
+            >,
+        >,
+    >,
+> = Lazy::new(|| Mutex::new(None));
 
 const STATIC_OID_RANGE_MAX: i32 = 50000;
 const DYNAMIC_OID_RANGE_MIN: i32 = 50010;
@@ -499,13 +521,13 @@ const DYNAMIC_OID_RANGE_MIN: i32 = 50010;
 fn validate_oid_range(oid: i32, is_static: bool) -> DFResult<()> {
     if is_static && oid > STATIC_OID_RANGE_MAX {
         return Err(DataFusionError::Execution(format!(
-            "Static OID {} exceeds maximum allowed range (1-{})", 
+            "Static OID {} exceeds maximum allowed range (1-{})",
             oid, STATIC_OID_RANGE_MAX
         )));
     }
     if !is_static && oid < DYNAMIC_OID_RANGE_MIN {
         return Err(DataFusionError::Execution(format!(
-            "Dynamic OID {} below minimum allowed range ({}+)", 
+            "Dynamic OID {} below minimum allowed range ({}+)",
             oid, DYNAMIC_OID_RANGE_MIN
         )));
     }
@@ -524,14 +546,14 @@ fn map_type_to_oid(t: &str) -> i32 {
 /// Get or allocate a consistent OID for a type name
 pub fn get_or_allocate_type_oid(type_name: &str) -> DFResult<i32> {
     let mut cache = TYPE_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(type_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(type_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -540,14 +562,14 @@ pub fn get_or_allocate_type_oid(type_name: &str) -> DFResult<i32> {
 pub fn get_or_allocate_description_oid(objoid: i32, classoid: i32, objsubid: i32) -> DFResult<i32> {
     let mut cache = DESCRIPTION_OID_CACHE.lock().unwrap();
     let key = (objoid, classoid, objsubid);
-    
+
     if let Some(&existing_oid) = cache.get(&key) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(key, new_oid);
     Ok(new_oid)
 }
@@ -558,14 +580,17 @@ pub fn load_pg_type_data() -> DFResult<()> {
     if data.is_none() {
         let start = std::time::Instant::now();
         log::info!("Lazy loading pg_type data...");
-        
+
         let contents = fs::read_to_string("pg_catalog_data/pg_schema/pg_catalog__pg_type.yaml")
-            .map_err(|e| DataFusionError::Execution(format!("Failed to read pg_type.yaml: {}", e)))?;
-        
+            .map_err(|e| {
+                DataFusionError::Execution(format!("Failed to read pg_type.yaml: {}", e))
+            })?;
+
         // Optimized YAML parsing - parse directly into structured data
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents)
-            .map_err(|e| DataFusionError::Execution(format!("Failed to parse pg_type.yaml: {}", e)))?;
-        
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents).map_err(|e| {
+            DataFusionError::Execution(format!("Failed to parse pg_type.yaml: {}", e))
+        })?;
+
         // Extract and process table data with OID consistency
         let mut tables = HashMap::new();
         if let Some(public_schema) = parsed.get("public").and_then(|p| p.get("pg_catalog")) {
@@ -574,7 +599,7 @@ pub fn load_pg_type_data() -> DFResult<()> {
                 if let Some(rows) = pg_type_def.get("rows") {
                     let row_count = rows.as_sequence().map(|s| s.len()).unwrap_or(0);
                     log::info!("Processing {} pg_type rows with OID consistency", row_count);
-                    
+
                     // Pre-populate OID cache for all types to ensure consistency
                     if let Some(rows_seq) = rows.as_sequence() {
                         for row in rows_seq {
@@ -582,7 +607,7 @@ pub fn load_pg_type_data() -> DFResult<()> {
                                 if let Some(oid) = row.get("oid").and_then(|o| o.as_i64()) {
                                     // Validate static OID range
                                     validate_oid_range(oid as i32, true)?;
-                                    
+
                                     // Pre-populate cache with static OIDs
                                     let mut cache = TYPE_OID_CACHE.lock().unwrap();
                                     cache.insert(typname.to_string(), oid as i32);
@@ -591,15 +616,18 @@ pub fn load_pg_type_data() -> DFResult<()> {
                         }
                     }
                 }
-                
+
                 // Store optimized table data (placeholder for now)
-                tables.insert("pg_type".to_string(), (
-                    arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
-                    Vec::new()
-                ));
+                tables.insert(
+                    "pg_type".to_string(),
+                    (
+                        arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
+                        Vec::new(),
+                    ),
+                );
             }
         }
-        
+
         *data = Some(tables);
         let duration = start.elapsed();
         log::info!("pg_type data loaded successfully in {:?}", duration);
@@ -635,14 +663,18 @@ pub fn load_pg_description_data() -> DFResult<()> {
     if data.is_none() {
         let start = std::time::Instant::now();
         log::info!("Lazy loading pg_description data...");
-        
-        let contents = fs::read_to_string("pg_catalog_data/pg_schema/pg_catalog__pg_description.yaml")
-            .map_err(|e| DataFusionError::Execution(format!("Failed to read pg_description.yaml: {}", e)))?;
-        
+
+        let contents =
+            fs::read_to_string("pg_catalog_data/pg_schema/pg_catalog__pg_description.yaml")
+                .map_err(|e| {
+                    DataFusionError::Execution(format!("Failed to read pg_description.yaml: {}", e))
+                })?;
+
         // Optimized YAML parsing for large description data
-        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents)
-            .map_err(|e| DataFusionError::Execution(format!("Failed to parse pg_description.yaml: {}", e)))?;
-        
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&contents).map_err(|e| {
+            DataFusionError::Execution(format!("Failed to parse pg_description.yaml: {}", e))
+        })?;
+
         // Extract and process table data with OID consistency
         let mut tables = HashMap::new();
         if let Some(public_schema) = parsed.get("public").and_then(|p| p.get("pg_catalog")) {
@@ -650,20 +682,23 @@ pub fn load_pg_description_data() -> DFResult<()> {
                 // Process pg_description table definition
                 if let Some(rows) = pg_desc_def.get("rows") {
                     let row_count = rows.as_sequence().map(|s| s.len()).unwrap_or(0);
-                    log::info!("Processing {} pg_description rows with OID consistency", row_count);
-                    
+                    log::info!(
+                        "Processing {} pg_description rows with OID consistency",
+                        row_count
+                    );
+
                     // Pre-populate OID cache for all description entries
                     if let Some(rows_seq) = rows.as_sequence() {
                         for row in rows_seq {
                             if let (Some(objoid), Some(classoid), Some(objsubid)) = (
                                 row.get("objoid").and_then(|o| o.as_i64()),
                                 row.get("classoid").and_then(|c| c.as_i64()),
-                                row.get("objsubid").and_then(|s| s.as_i64())
+                                row.get("objsubid").and_then(|s| s.as_i64()),
                             ) {
                                 // Pre-populate description cache with consistent OIDs
                                 let key = (objoid as i32, classoid as i32, objsubid as i32);
                                 let mut cache = DESCRIPTION_OID_CACHE.lock().unwrap();
-                                
+
                                 // Use a synthetic OID for description entries (they don't have their own OIDs in the data)
                                 // We'll generate them consistently based on the key
                                 let desc_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
@@ -673,15 +708,18 @@ pub fn load_pg_description_data() -> DFResult<()> {
                         }
                     }
                 }
-                
+
                 // Store optimized table data (placeholder for now)
-                tables.insert("pg_description".to_string(), (
-                    arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
-                    Vec::new()
-                ));
+                tables.insert(
+                    "pg_description".to_string(),
+                    (
+                        arrow::datatypes::SchemaRef::new(arrow::datatypes::Schema::empty()),
+                        Vec::new(),
+                    ),
+                );
             }
         }
-        
+
         *data = Some(tables);
         let duration = start.elapsed();
         log::info!("pg_description data loaded successfully in {:?}", duration);
@@ -690,23 +728,31 @@ pub fn load_pg_description_data() -> DFResult<()> {
 }
 
 /// Apply OID cache to pg_type entries during registration
-pub async fn register_pg_type_with_oid_cache(ctx: &SessionContext, type_name: &str, _type_def: &serde_yaml::Value) -> DFResult<()> {
+pub async fn register_pg_type_with_oid_cache(
+    ctx: &SessionContext,
+    type_name: &str,
+    _type_def: &serde_yaml::Value,
+) -> DFResult<()> {
     // Ensure lazy loading is complete
     load_pg_type_data()?;
-    
+
     // Get consistent OID for this type
     let type_oid = get_or_allocate_type_oid(type_name)?;
-    
+
     // Apply OID cache to type definition
-    log::debug!("Registering pg_type entry '{}' with OID {}", type_name, type_oid);
-    
+    log::debug!(
+        "Registering pg_type entry '{}' with OID {}",
+        type_name,
+        type_oid
+    );
+
     // Insert/update the type in pg_type table with consistent OID
     let sql = format!(
         "INSERT OR REPLACE INTO pg_catalog.pg_type (oid, typname) VALUES ({}, '{}')",
         type_oid,
         type_name.replace('\'', "''")
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -722,26 +768,30 @@ pub async fn register_pg_type_with_oid_cache(ctx: &SessionContext, type_name: &s
 
 /// Apply OID cache to pg_description entries during registration  
 pub async fn register_pg_description_with_oid_cache(
-    ctx: &SessionContext, 
-    objoid: i32, 
-    classoid: i32, 
+    ctx: &SessionContext,
+    objoid: i32,
+    classoid: i32,
     objsubid: i32,
-    description: &str
+    description: &str,
 ) -> DFResult<()> {
     // Ensure lazy loading is complete
     load_pg_description_data()?;
-    
+
     // Get consistent OID for this description entry
     let desc_oid = get_or_allocate_description_oid(objoid, classoid, objsubid)?;
-    
-    log::debug!("Registering pg_description entry with OID {} for object {}", desc_oid, objoid);
-    
+
+    log::debug!(
+        "Registering pg_description entry with OID {} for object {}",
+        desc_oid,
+        objoid
+    );
+
     // Insert/update the description in pg_description table with consistent OID
     let sql = format!(
         "INSERT OR REPLACE INTO pg_catalog.pg_description (objoid, classoid, objsubid, description) VALUES ({}, {}, {}, '{}')",
         objoid, classoid, objsubid, description.replace('\'', "''")
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -758,24 +808,26 @@ pub async fn register_pg_description_with_oid_cache(
 /// Ensure OID consistency across all static table references
 pub async fn ensure_static_table_oid_consistency(ctx: &SessionContext) -> DFResult<()> {
     log::info!("Ensuring OID consistency across static table references...");
-    
+
     // Pre-load all static tables to populate caches
     load_pg_type_data()?;
     load_pg_description_data()?;
-    
+
     // Verify OID consistency between related tables
     // For example, ensure pg_type OIDs are consistently referenced in other tables
-    
+
     // Check if pg_type references are consistent in pg_class.reltype
     let consistency_check = ctx
-        .sql("
+        .sql(
+            "
             SELECT COUNT(*) as count 
             FROM pg_catalog.pg_class c 
             LEFT JOIN pg_catalog.pg_type t ON c.reltype = t.oid 
             WHERE c.reltype IS NOT NULL AND t.oid IS NULL
-        ")
+        ",
+        )
         .await;
-    
+
     match consistency_check {
         Ok(df) => {
             let batches = df.collect().await?;
@@ -786,19 +838,25 @@ pub async fn ensure_static_table_oid_consistency(ctx: &SessionContext) -> DFResu
                     .downcast_ref::<arrow::array::Int64Array>()
                     .unwrap();
                 let inconsistent_count = count_array.value(0);
-                
+
                 if inconsistent_count > 0 {
-                    log::warn!("Found {} inconsistent OID references between pg_class and pg_type", inconsistent_count);
+                    log::warn!(
+                        "Found {} inconsistent OID references between pg_class and pg_type",
+                        inconsistent_count
+                    );
                 } else {
                     log::info!("OID consistency verified between pg_class and pg_type");
                 }
             }
         }
         Err(e) => {
-            log::debug!("Could not verify OID consistency (tables may not be ready): {}", e);
+            log::debug!(
+                "Could not verify OID consistency (tables may not be ready): {}",
+                e
+            );
         }
     }
-    
+
     log::info!("Static table OID consistency check completed");
     Ok(())
 }
@@ -817,7 +875,7 @@ pub async fn register_enhanced_table(
     // Get consistent OIDs for all components
     let table_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(table_oid, false)?;
-    
+
     let type_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(type_oid, false)?;
 
@@ -826,7 +884,8 @@ pub async fn register_enhanced_table(
         .sql("SELECT oid FROM pg_catalog.pg_namespace WHERE nspname=$schema")
         .await?
         .with_param_values(vec![("schema", ScalarValue::from(schema_name))])?
-        .collect().await?;
+        .collect()
+        .await?;
 
     let schema_oid = if schema_oid_result.is_empty() || schema_oid_result[0].num_rows() == 0 {
         return Err(DataFusionError::Execution("schema not found".to_string()));
@@ -903,7 +962,11 @@ pub async fn register_enhanced_table(
     // Register constraints (resilient to missing pg_constraint table)
     for constraint in constraints {
         if let Err(e) = register_constraint(ctx, &constraint).await {
-            log::debug!("Could not register constraint '{}': {}", constraint.constraint_name, e);
+            log::debug!(
+                "Could not register constraint '{}': {}",
+                constraint.constraint_name,
+                e
+            );
             // Continue - not critical for basic table registration
         }
     }
@@ -916,16 +979,24 @@ pub async fn register_enhanced_table(
         }
     }
 
-    log::info!("Enhanced table '{}' registered with OID {} and {} constraints, {} indexes", 
-               table_name, table_oid, enhanced_metadata.constraints.len(), enhanced_metadata.indexes.len());
+    log::info!(
+        "Enhanced table '{}' registered with OID {} and {} constraints, {} indexes",
+        table_name,
+        table_oid,
+        enhanced_metadata.constraints.len(),
+        enhanced_metadata.indexes.len()
+    );
 
     Ok(enhanced_metadata)
 }
 
 /// Register a constraint in pg_constraint
-pub async fn register_constraint(ctx: &SessionContext, constraint: &ConstraintMetadata) -> DFResult<()> {
+pub async fn register_constraint(
+    ctx: &SessionContext,
+    constraint: &ConstraintMetadata,
+) -> DFResult<()> {
     let constraint_oid = get_or_allocate_constraint_oid(&constraint.constraint_name)?;
-    
+
     let contype = match constraint.constraint_type {
         ConstraintType::PrimaryKey => 'p',
         ConstraintType::ForeignKey => 'f',
@@ -934,16 +1005,26 @@ pub async fn register_constraint(ctx: &SessionContext, constraint: &ConstraintMe
         ConstraintType::NotNull => 'n',
     };
 
-    let conkey = format!("ARRAY[{}]", constraint.columns.iter()
-        .map(|c| c.to_string())
-        .collect::<Vec<_>>()
-        .join(","));
-
-    let confkey = if !constraint.referenced_columns.is_empty() {
-        format!("ARRAY[{}]", constraint.referenced_columns.iter()
+    let conkey = format!(
+        "ARRAY[{}]",
+        constraint
+            .columns
+            .iter()
             .map(|c| c.to_string())
             .collect::<Vec<_>>()
-            .join(","))
+            .join(",")
+    );
+
+    let confkey = if !constraint.referenced_columns.is_empty() {
+        format!(
+            "ARRAY[{}]",
+            constraint
+                .referenced_columns
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     } else {
         "NULL".to_string()
     };
@@ -961,7 +1042,11 @@ pub async fn register_constraint(ctx: &SessionContext, constraint: &ConstraintMe
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
-            log::debug!("Registered constraint '{}' with OID {}", constraint.constraint_name, constraint_oid);
+            log::debug!(
+                "Registered constraint '{}' with OID {}",
+                constraint.constraint_name,
+                constraint_oid
+            );
         }
         Err(_) => {
             log::debug!("pg_constraint table not ready yet");
@@ -974,25 +1059,28 @@ pub async fn register_constraint(ctx: &SessionContext, constraint: &ConstraintMe
 /// Register an index in pg_index
 pub async fn register_index(ctx: &SessionContext, index: &IndexMetadata) -> DFResult<()> {
     let index_oid = get_or_allocate_index_oid(&index.index_name)?;
-    
-    let indkey = format!("ARRAY[{}]", index.columns.iter()
-        .map(|c| c.to_string())
-        .collect::<Vec<_>>()
-        .join(","));
+
+    let indkey = format!(
+        "ARRAY[{}]",
+        index
+            .columns
+            .iter()
+            .map(|c| c.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    );
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_index \
          (indexrelid, indrelid, indkey, indisunique, indisprimary) \
          VALUES ({index_oid}, {}, {indkey}, {}, {})",
-        index.table_oid,
-        index.is_unique,
-        index.is_primary
+        index.table_oid, index.is_unique, index.is_primary
     );
 
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
-            
+
             // Also register the index as a relation in pg_class
             let index_class_sql = format!(
                 "INSERT INTO pg_catalog.pg_class \
@@ -1002,8 +1090,12 @@ pub async fn register_index(ctx: &SessionContext, index: &IndexMetadata) -> DFRe
                 index.table_oid
             );
             ctx.sql(&index_class_sql).await?.collect().await?;
-            
-            log::debug!("Registered index '{}' with OID {}", index.index_name, index_oid);
+
+            log::debug!(
+                "Registered index '{}' with OID {}",
+                index.index_name,
+                index_oid
+            );
         }
         Err(_) => {
             log::debug!("pg_index table not ready yet");
@@ -1016,14 +1108,14 @@ pub async fn register_index(ctx: &SessionContext, index: &IndexMetadata) -> DFRe
 /// Get or allocate consistent OID for constraint
 pub fn get_or_allocate_constraint_oid(constraint_name: &str) -> DFResult<i32> {
     let mut cache = CONSTRAINT_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(constraint_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(constraint_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1031,14 +1123,14 @@ pub fn get_or_allocate_constraint_oid(constraint_name: &str) -> DFResult<i32> {
 /// Get or allocate consistent OID for index
 pub fn get_or_allocate_index_oid(index_name: &str) -> DFResult<i32> {
     let mut cache = INDEX_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(index_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(index_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1067,7 +1159,11 @@ pub async fn register_dependency(
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
-            log::debug!("Registered dependency: {} -> {}", dependent_oid, dependency_oid);
+            log::debug!(
+                "Registered dependency: {} -> {}",
+                dependent_oid,
+                dependency_oid
+            );
         }
         Err(_) => {
             log::debug!("pg_depend table not ready yet");
@@ -1099,17 +1195,19 @@ pub fn update_enhanced_table_metadata(table_oid: i32, metadata: EnhancedTableMet
 /// Enhanced cross-table OID consistency for dynamic tables (Phase 3)
 pub async fn ensure_enhanced_oid_consistency(ctx: &SessionContext) -> DFResult<()> {
     log::info!("Ensuring enhanced OID consistency across dynamic tables...");
-    
+
     // Check constraint references
     let constraint_check = ctx
-        .sql("
+        .sql(
+            "
             SELECT COUNT(*) as count 
             FROM pg_catalog.pg_constraint c 
             LEFT JOIN pg_catalog.pg_class t ON c.conrelid = t.oid 
             WHERE c.conrelid IS NOT NULL AND t.oid IS NULL
-        ")
+        ",
+        )
         .await;
-    
+
     if let Ok(df) = constraint_check {
         if let Ok(batches) = df.collect().await {
             if !batches.is_empty() && batches[0].num_rows() > 0 {
@@ -1119,9 +1217,12 @@ pub async fn ensure_enhanced_oid_consistency(ctx: &SessionContext) -> DFResult<(
                     .downcast_ref::<arrow::array::Int64Array>()
                     .unwrap();
                 let inconsistent_count = count_array.value(0);
-                
+
                 if inconsistent_count > 0 {
-                    log::warn!("Found {} inconsistent constraint references", inconsistent_count);
+                    log::warn!(
+                        "Found {} inconsistent constraint references",
+                        inconsistent_count
+                    );
                 } else {
                     log::info!("Constraint OID consistency verified");
                 }
@@ -1131,14 +1232,16 @@ pub async fn ensure_enhanced_oid_consistency(ctx: &SessionContext) -> DFResult<(
 
     // Check index references
     let index_check = ctx
-        .sql("
+        .sql(
+            "
             SELECT COUNT(*) as count 
             FROM pg_catalog.pg_index i 
             LEFT JOIN pg_catalog.pg_class t ON i.indrelid = t.oid 
             WHERE i.indrelid IS NOT NULL AND t.oid IS NULL
-        ")
+        ",
+        )
         .await;
-    
+
     if let Ok(df) = index_check {
         if let Ok(batches) = df.collect().await {
             if !batches.is_empty() && batches[0].num_rows() > 0 {
@@ -1148,7 +1251,7 @@ pub async fn ensure_enhanced_oid_consistency(ctx: &SessionContext) -> DFResult<(
                     .downcast_ref::<arrow::array::Int64Array>()
                     .unwrap();
                 let inconsistent_count = count_array.value(0);
-                
+
                 if inconsistent_count > 0 {
                     log::warn!("Found {} inconsistent index references", inconsistent_count);
                 } else {
@@ -1176,20 +1279,21 @@ pub async fn register_enhanced_database(
 ) -> DFResult<DatabaseMetadata> {
     // Get or allocate consistent OID for database
     let database_oid = get_or_allocate_database_oid(database_name)?;
-    
+
     // Get owner OID (assume superuser for now, will be enhanced with pg_authid)
     let owner_oid = 10; // Bootstrap superuser OID
-    
+
     // Default tablespace OID
     let default_tablespace_oid = 1663; // pg_default tablespace
-    
+
     // Check if database already exists
     let exists_check = ctx
         .sql("SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname=$database_name")
         .await?
         .with_param_values(vec![("database_name", ScalarValue::from(database_name))])?
-        .collect().await?;
-    
+        .collect()
+        .await?;
+
     let already_exists = if !exists_check.is_empty() && exists_check[0].num_rows() > 0 {
         let count_array = exists_check[0]
             .column(0)
@@ -1217,7 +1321,7 @@ pub async fn register_enhanced_database(
             connection_limit,
             default_tablespace_oid
         );
-        
+
         ctx.sql(&sql).await?.collect().await?;
     }
 
@@ -1242,7 +1346,11 @@ pub async fn register_enhanced_database(
         cache.insert(database_oid, metadata.clone());
     }
 
-    log::info!("Enhanced database '{}' registered with OID {}", database_name, database_oid);
+    log::info!(
+        "Enhanced database '{}' registered with OID {}",
+        database_name,
+        database_oid
+    );
     Ok(metadata)
 }
 
@@ -1255,7 +1363,7 @@ pub async fn register_tablespace(
 ) -> DFResult<TablespaceMetadata> {
     // Get or allocate consistent OID for tablespace
     let tablespace_oid = get_or_allocate_tablespace_oid(tablespace_name)?;
-    
+
     // Get owner OID (assume superuser for now)
     let owner_oid = 10; // Bootstrap superuser OID
 
@@ -1266,10 +1374,11 @@ pub async fn register_tablespace(
         tablespace_oid,
         tablespace_name.replace('\'', "''"),
         owner_oid,
-        location.map(|l| format!("'{}'", l.replace('\'', "''")))
-              .unwrap_or_else(|| "NULL".to_string())
+        location
+            .map(|l| format!("'{}'", l.replace('\'', "''")))
+            .unwrap_or_else(|| "NULL".to_string())
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1294,21 +1403,25 @@ pub async fn register_tablespace(
         cache.insert(tablespace_oid, metadata.clone());
     }
 
-    log::info!("Tablespace '{}' registered with OID {}", tablespace_name, tablespace_oid);
+    log::info!(
+        "Tablespace '{}' registered with OID {}",
+        tablespace_name,
+        tablespace_oid
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for database
 pub fn get_or_allocate_database_oid(database_name: &str) -> DFResult<i32> {
     let mut cache = DATABASE_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(database_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(database_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1316,14 +1429,14 @@ pub fn get_or_allocate_database_oid(database_name: &str) -> DFResult<i32> {
 /// Get or allocate consistent OID for tablespace
 pub fn get_or_allocate_tablespace_oid(tablespace_name: &str) -> DFResult<i32> {
     let mut cache = TABLESPACE_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(tablespace_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(tablespace_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1359,11 +1472,11 @@ pub async fn register_user(
         password_hash.map(|p| format!("'{}'", p.replace('\'', "''")))
                      .unwrap_or_else(|| "NULL".to_string())
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
-            
+
             // Also register in pg_user view if it's a login role
             if can_login {
                 let user_sql = format!(
@@ -1378,7 +1491,7 @@ pub async fn register_user(
                     password_hash.map(|p| format!("'{}'", p.replace('\'', "''")))
                                  .unwrap_or_else(|| "NULL".to_string())
                 );
-                
+
                 if let Ok(df) = ctx.sql(&user_sql).await {
                     df.collect().await?;
                 }
@@ -1409,22 +1522,27 @@ pub async fn register_user(
         cache.insert(user_oid, metadata.clone());
     }
 
-    log::info!("User '{}' registered with OID {} (superuser: {}, can_login: {})", 
-               username, user_oid, is_superuser, can_login);
+    log::info!(
+        "User '{}' registered with OID {} (superuser: {}, can_login: {})",
+        username,
+        user_oid,
+        is_superuser,
+        can_login
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for user
 pub fn get_or_allocate_user_oid(username: &str) -> DFResult<i32> {
     let mut cache = USER_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(username) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(username.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1432,59 +1550,56 @@ pub fn get_or_allocate_user_oid(username: &str) -> DFResult<i32> {
 /// Phase 4A: Initialize default PostgreSQL system objects
 pub async fn initialize_system_catalog(ctx: &SessionContext) -> DFResult<()> {
     log::info!("Initializing Phase 4A system catalog objects...");
-    
+
     // Initialize default tablespace
     let _pg_default = register_tablespace(
         ctx,
         "pg_default",
         "postgres",
         None, // No specific location
-    ).await?;
-    
-    let _pg_global = register_tablespace(
-        ctx,
-        "pg_global",
-        "postgres",
-        None,
-    ).await?;
+    )
+    .await?;
+
+    let _pg_global = register_tablespace(ctx, "pg_global", "postgres", None).await?;
 
     // Initialize bootstrap superuser
     let _postgres_user = register_user(
-        ctx,
-        "postgres",
-        true,  // is_superuser
-        true,  // can_create_db
-        true,  // can_create_role
-        true,  // can_login
-        true,  // is_replication
-        None,  // no password hash
-        -1,    // unlimited connections
-    ).await?;
+        ctx, "postgres", true, // is_superuser
+        true, // can_create_db
+        true, // can_create_role
+        true, // can_login
+        true, // is_replication
+        None, // no password hash
+        -1,   // unlimited connections
+    )
+    .await?;
 
     // Initialize template databases
     let _template0 = register_enhanced_database(
         ctx,
         "template0",
         "postgres",
-        6,     // UTF8 encoding
+        6, // UTF8 encoding
         "C",
         "C",
         true,  // is_template
         false, // no connections allowed
         -1,    // unlimited connections
-    ).await?;
+    )
+    .await?;
 
     let _template1 = register_enhanced_database(
         ctx,
         "template1",
         "postgres",
-        6,     // UTF8 encoding
+        6, // UTF8 encoding
         "C",
         "C",
-        true,  // is_template
-        true,  // connections allowed
-        -1,    // unlimited connections
-    ).await?;
+        true, // is_template
+        true, // connections allowed
+        -1,   // unlimited connections
+    )
+    .await?;
 
     log::info!("Phase 4A system catalog initialization completed");
     Ok(())
@@ -1509,19 +1624,26 @@ pub async fn register_function(
 ) -> DFResult<FunctionMetadata> {
     // Get or allocate consistent OID for function
     let function_oid = get_or_allocate_function_oid(function_name)?;
-    
+
     // Get namespace OID
     let namespace_oid = get_namespace_oid(ctx, namespace_name).await.unwrap_or(2200); // public namespace
-    
+
     // Default owner and language OIDs
     let owner_oid = 10; // Bootstrap superuser
     let language_oid = get_language_oid(language_name).unwrap_or(12); // SQL language
-    
+
     // Format argument types array
     let arg_types_str = if arg_types.is_empty() {
         "'{}'".to_string()
     } else {
-        format!("ARRAY[{}]", arg_types.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(","))
+        format!(
+            "ARRAY[{}]",
+            arg_types
+                .iter()
+                .map(|t| t.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     };
 
     let sql = format!(
@@ -1550,7 +1672,7 @@ pub async fn register_function(
         arg_types_str,
         function_body.unwrap_or("").replace('\'', "''")
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1585,8 +1707,13 @@ pub async fn register_function(
         cache.insert(function_oid, metadata.clone());
     }
 
-    log::info!("Function '{}' registered with OID {} (aggregate: {}, immutable: {})", 
-               function_name, function_oid, is_aggregate, is_immutable);
+    log::info!(
+        "Function '{}' registered with OID {} (aggregate: {}, immutable: {})",
+        function_name,
+        function_oid,
+        is_aggregate,
+        is_immutable
+    );
     Ok(metadata)
 }
 
@@ -1603,10 +1730,10 @@ pub async fn register_operator(
 ) -> DFResult<OperatorMetadata> {
     // Get or allocate consistent OID for operator
     let operator_oid = get_or_allocate_operator_oid(operator_name)?;
-    
+
     // Get namespace OID
     let namespace_oid = get_namespace_oid(ctx, namespace_name).await.unwrap_or(2200);
-    
+
     // Default owner OID
     let owner_oid = 10; // Bootstrap superuser
 
@@ -1620,13 +1747,19 @@ pub async fn register_operator(
         operator_name.replace('\'', "''"),
         namespace_oid,
         owner_oid,
-        if left_type_oid.is_none() { 'r' } else if right_type_oid.is_none() { 'l' } else { 'b' }, // oprkind
+        if left_type_oid.is_none() {
+            'r'
+        } else if right_type_oid.is_none() {
+            'l'
+        } else {
+            'b'
+        }, // oprkind
         left_type_oid.unwrap_or(0),
         right_type_oid.unwrap_or(0),
         result_type_oid,
         function_oid
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1660,7 +1793,11 @@ pub async fn register_operator(
         cache.insert(operator_oid, metadata.clone());
     }
 
-    log::info!("Operator '{}' registered with OID {}", operator_name, operator_oid);
+    log::info!(
+        "Operator '{}' registered with OID {}",
+        operator_name,
+        operator_oid
+    );
     Ok(metadata)
 }
 
@@ -1681,16 +1818,17 @@ pub async fn register_aggregate(
         namespace_name,
         "postgres",
         "internal",
-        vec![], // Will be set based on aggregate definition
+        vec![],              // Will be set based on aggregate definition
         transition_type_oid, // Return type matches transition type
-        true,  // is_aggregate
-        false, // not window
-        false, // not security definer
-        false, // not strict
-        true,  // immutable
-        None,  // no function body
-        100.0, // default cost
-    ).await?;
+        true,                // is_aggregate
+        false,               // not window
+        false,               // not security definer
+        false,               // not strict
+        true,                // immutable
+        None,                // no function body
+        100.0,               // default cost
+    )
+    .await?;
 
     // Get or allocate consistent OID for aggregate
     let aggregate_oid = get_or_allocate_aggregate_oid(aggregate_name)?;
@@ -1709,10 +1847,11 @@ pub async fn register_aggregate(
         transition_function_oid,
         final_function_oid.unwrap_or(0),
         transition_type_oid,
-        initial_value.map(|v| format!("'{}'", v.replace('\'', "''")))
-                     .unwrap_or_else(|| "NULL".to_string())
+        initial_value
+            .map(|v| format!("'{}'", v.replace('\'', "''")))
+            .unwrap_or_else(|| "NULL".to_string())
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1745,7 +1884,11 @@ pub async fn register_aggregate(
         cache.insert(aggregate_oid, metadata.clone());
     }
 
-    log::info!("Aggregate '{}' registered with OID {}", aggregate_name, aggregate_oid);
+    log::info!(
+        "Aggregate '{}' registered with OID {}",
+        aggregate_name,
+        aggregate_oid
+    );
     Ok(metadata)
 }
 
@@ -1753,10 +1896,14 @@ pub async fn register_aggregate(
 async fn get_namespace_oid(ctx: &SessionContext, namespace_name: &str) -> Option<i32> {
     let result = ctx
         .sql("SELECT oid FROM pg_catalog.pg_namespace WHERE nspname=$schema")
-        .await.ok()?
-        .with_param_values(vec![("schema", ScalarValue::from(namespace_name))]).ok()?
-        .collect().await.ok()?;
-    
+        .await
+        .ok()?
+        .with_param_values(vec![("schema", ScalarValue::from(namespace_name))])
+        .ok()?
+        .collect()
+        .await
+        .ok()?;
+
     if result.is_empty() || result[0].num_rows() == 0 {
         None
     } else {
@@ -1783,14 +1930,14 @@ fn get_language_oid(language_name: &str) -> Option<i32> {
 /// Get or allocate consistent OID for function
 pub fn get_or_allocate_function_oid(function_name: &str) -> DFResult<i32> {
     let mut cache = FUNCTION_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(function_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(function_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1798,14 +1945,14 @@ pub fn get_or_allocate_function_oid(function_name: &str) -> DFResult<i32> {
 /// Get or allocate consistent OID for operator
 pub fn get_or_allocate_operator_oid(operator_name: &str) -> DFResult<i32> {
     let mut cache = OPERATOR_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(operator_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(operator_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1813,14 +1960,14 @@ pub fn get_or_allocate_operator_oid(operator_name: &str) -> DFResult<i32> {
 /// Get or allocate consistent OID for aggregate
 pub fn get_or_allocate_aggregate_oid(aggregate_name: &str) -> DFResult<i32> {
     let mut cache = AGGREGATE_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(aggregate_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(aggregate_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1828,14 +1975,14 @@ pub fn get_or_allocate_aggregate_oid(aggregate_name: &str) -> DFResult<i32> {
 /// Get or allocate consistent OID for trigger
 pub fn get_or_allocate_trigger_oid(trigger_name: &str) -> DFResult<i32> {
     let mut cache = TRIGGER_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(trigger_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(trigger_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -1859,14 +2006,30 @@ pub async fn register_trigger(
 
     // Convert TriggerType to bitmask for pg_trigger storage
     let mut tgtype = 0i16;
-    if trigger_type.before { tgtype |= 2; }
-    if trigger_type.after { tgtype |= 0; }
-    if trigger_type.instead { tgtype |= 64; }
-    if trigger_type.insert { tgtype |= 4; }
-    if trigger_type.update { tgtype |= 8; }
-    if trigger_type.delete { tgtype |= 16; }
-    if trigger_type.truncate { tgtype |= 32; }
-    if trigger_type.per_row { tgtype |= 1; }
+    if trigger_type.before {
+        tgtype |= 2;
+    }
+    if trigger_type.after {
+        tgtype |= 0;
+    }
+    if trigger_type.instead {
+        tgtype |= 64;
+    }
+    if trigger_type.insert {
+        tgtype |= 4;
+    }
+    if trigger_type.update {
+        tgtype |= 8;
+    }
+    if trigger_type.delete {
+        tgtype |= 16;
+    }
+    if trigger_type.truncate {
+        tgtype |= 32;
+    }
+    if trigger_type.per_row {
+        tgtype |= 1;
+    }
 
     let enabled_char = match enabled_state {
         TriggerEnabledState::Origin => 'O',
@@ -1896,14 +2059,17 @@ pub async fn register_trigger(
         } else {
             format!("'{{{}}}'", trigger_args.join(","))
         },
-        when_clause.map(|w| format!("'{}'", w.replace('\'', "''")))
-                   .unwrap_or_else(|| "NULL".to_string()),
-        transition_old_table.map(|t| format!("'{}'", t.replace('\'', "''")))
-                           .unwrap_or_else(|| "NULL".to_string()),
-        transition_new_table.map(|t| format!("'{}'", t.replace('\'', "''")))
-                           .unwrap_or_else(|| "NULL".to_string())
+        when_clause
+            .map(|w| format!("'{}'", w.replace('\'', "''")))
+            .unwrap_or_else(|| "NULL".to_string()),
+        transition_old_table
+            .map(|t| format!("'{}'", t.replace('\'', "''")))
+            .unwrap_or_else(|| "NULL".to_string()),
+        transition_new_table
+            .map(|t| format!("'{}'", t.replace('\'', "''")))
+            .unwrap_or_else(|| "NULL".to_string())
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1934,8 +2100,13 @@ pub async fn register_trigger(
         cache.insert(trigger_oid, metadata.clone());
     }
 
-    log::info!("Trigger '{}' registered with OID {} on table OID {} (function OID: {})", 
-               trigger_name, trigger_oid, table_oid, function_oid);
+    log::info!(
+        "Trigger '{}' registered with OID {} on table OID {} (function OID: {})",
+        trigger_name,
+        trigger_oid,
+        table_oid,
+        function_oid
+    );
     Ok(metadata)
 }
 
@@ -1955,7 +2126,7 @@ pub async fn register_auth_member(
          VALUES ({}, {}, {}, {})",
         roleid, member, grantor, admin_option
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -1979,22 +2150,27 @@ pub async fn register_auth_member(
         cache.insert((roleid, member), metadata.clone());
     }
 
-    log::info!("Auth membership registered: role {} granted to member {} by grantor {} (admin: {})", 
-               roleid, member, grantor, admin_option);
+    log::info!(
+        "Auth membership registered: role {} granted to member {} by grantor {} (admin: {})",
+        roleid,
+        member,
+        grantor,
+        admin_option
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for default ACL
 pub fn get_or_allocate_default_acl_oid(acl_key: &str) -> DFResult<i32> {
     let mut cache = DEFAULT_ACL_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(acl_key) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(acl_key.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2004,7 +2180,7 @@ pub async fn register_default_acl(
     ctx: &SessionContext,
     defaclrole: i32,        // OID of role whose objects get these ACLs
     defaclnamespace: i32,   // OID of namespace (0 for all namespaces)
-    defaclobjtype: char,    // Object type: 'r' = relation, 'S' = sequence, 'f' = function, 'T' = type
+    defaclobjtype: char, // Object type: 'r' = relation, 'S' = sequence, 'f' = function, 'T' = type
     defaclacl: Vec<String>, // Access privileges in ACL format
 ) -> DFResult<DefaultAclMetadata> {
     // Generate unique key for OID allocation
@@ -2023,7 +2199,7 @@ pub async fn register_default_acl(
          VALUES ({}, {}, {}, '{}', {})",
         oid, defaclrole, defaclnamespace, defaclobjtype, acl_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2048,18 +2224,23 @@ pub async fn register_default_acl(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Default ACL registered with OID {} for role {} namespace {} objtype '{}'", 
-               oid, defaclrole, defaclnamespace, defaclobjtype);
+    log::info!(
+        "Default ACL registered with OID {} for role {} namespace {} objtype '{}'",
+        oid,
+        defaclrole,
+        defaclnamespace,
+        defaclobjtype
+    );
     Ok(metadata)
 }
 
 /// Register initial privileges in pg_init_privs
 pub async fn register_init_privs(
     ctx: &SessionContext,
-    objoid: i32,         // OID of the object
-    classoid: i32,       // OID of the system catalog containing the object
-    objsubid: i32,       // Column number for column privileges, 0 for object
-    privtype: char,      // Type of initial privilege (e = extension, i = initdb)
+    objoid: i32,            // OID of the object
+    classoid: i32,          // OID of the system catalog containing the object
+    objsubid: i32,          // Column number for column privileges, 0 for object
+    privtype: char,         // Type of initial privilege (e = extension, i = initdb)
     initprivs: Vec<String>, // Initial access privileges in ACL format
 ) -> DFResult<InitPrivsMetadata> {
     let privs_text = if initprivs.is_empty() {
@@ -2074,7 +2255,7 @@ pub async fn register_init_privs(
          VALUES ({}, {}, {}, '{}', {})",
         objoid, classoid, objsubid, privtype, privs_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2099,29 +2280,36 @@ pub async fn register_init_privs(
         cache.insert((objoid, classoid, objsubid), metadata.clone());
     }
 
-    log::info!("Initial privileges registered for object {} in catalog {} (subid: {}, type: '{}')", 
-               objoid, classoid, objsubid, privtype);
+    log::info!(
+        "Initial privileges registered for object {} in catalog {} (subid: {}, type: '{}')",
+        objoid,
+        classoid,
+        objsubid,
+        privtype
+    );
     Ok(metadata)
 }
 
 /// Register security label in pg_seclabel
 pub async fn register_security_label(
     ctx: &SessionContext,
-    objoid: i32,         // OID of the object this label is for
-    classoid: i32,       // OID of the system catalog containing the object
-    objsubid: i32,       // Column number for column labels, 0 for object
-    provider: &str,      // Label provider (e.g., selinux)
-    label: &str,         // Security label value
+    objoid: i32,    // OID of the object this label is for
+    classoid: i32,  // OID of the system catalog containing the object
+    objsubid: i32,  // Column number for column labels, 0 for object
+    provider: &str, // Label provider (e.g., selinux)
+    label: &str,    // Security label value
 ) -> DFResult<SecLabelMetadata> {
     let sql = format!(
         "INSERT INTO pg_catalog.pg_seclabel \
          (objoid, classoid, objsubid, provider, label) \
          VALUES ({}, {}, {}, '{}', '{}')",
-        objoid, classoid, objsubid, 
-        provider.replace('\'', "''"), 
+        objoid,
+        classoid,
+        objsubid,
+        provider.replace('\'', "''"),
         label.replace('\'', "''")
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2143,11 +2331,19 @@ pub async fn register_security_label(
     // Cache the metadata
     {
         let mut cache = SEC_LABEL_CACHE.lock().unwrap();
-        cache.insert((objoid, classoid, objsubid, provider.to_string()), metadata.clone());
+        cache.insert(
+            (objoid, classoid, objsubid, provider.to_string()),
+            metadata.clone(),
+        );
     }
 
-    log::info!("Security label registered for object {} in catalog {} (subid: {}, provider: '{}')", 
-               objoid, classoid, objsubid, provider);
+    log::info!(
+        "Security label registered for object {} in catalog {} (subid: {}, provider: '{}')",
+        objoid,
+        classoid,
+        objsubid,
+        provider
+    );
     Ok(metadata)
 }
 
@@ -2156,44 +2352,66 @@ pub async fn register_security_label(
 /// Register partitioned table in pg_partitioned_table
 pub async fn register_partitioned_table(
     ctx: &SessionContext,
-    partrelid: i32,           // OID of the partitioned table
-    partstrat: char,          // Partitioning strategy: 'h' = hash, 'l' = list, 'r' = range
-    partnatts: i16,           // Number of partitioning columns
-    partdefid: i32,           // OID of the default partition (0 if none)
-    partattrs: Vec<i16>,      // Array of partitioning column numbers
-    partclass: Vec<i32>,      // Array of operator class OIDs for partitioning columns
-    partcollation: Vec<i32>,  // Array of collation OIDs for partitioning columns
-    partexprs: Option<&str>,  // Partitioning expressions (serialized)
+    partrelid: i32,          // OID of the partitioned table
+    partstrat: char,         // Partitioning strategy: 'h' = hash, 'l' = list, 'r' = range
+    partnatts: i16,          // Number of partitioning columns
+    partdefid: i32,          // OID of the default partition (0 if none)
+    partattrs: Vec<i16>,     // Array of partitioning column numbers
+    partclass: Vec<i32>,     // Array of operator class OIDs for partitioning columns
+    partcollation: Vec<i32>, // Array of collation OIDs for partitioning columns
+    partexprs: Option<&str>, // Partitioning expressions (serialized)
 ) -> DFResult<PartitionedTableMetadata> {
     let partattrs_text = if partattrs.is_empty() {
         "NULL".to_string()
     } else {
-        format!("'{{{}}}'", partattrs.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
+        format!(
+            "'{{{}}}'",
+            partattrs
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     };
 
     let partclass_text = if partclass.is_empty() {
-        "NULL".to_string()  
+        "NULL".to_string()
     } else {
-        format!("'{{{}}}'", partclass.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
+        format!(
+            "'{{{}}}'",
+            partclass
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     };
 
     let partcollation_text = if partcollation.is_empty() {
         "NULL".to_string()
     } else {
-        format!("'{{{}}}'", partcollation.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
+        format!(
+            "'{{{}}}'",
+            partcollation
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     };
 
-    let partexprs_text = partexprs.map(|e| format!("'{}'", e.replace('\'', "''")))
-                                 .unwrap_or_else(|| "NULL".to_string());
+    let partexprs_text = partexprs
+        .map(|e| format!("'{}'", e.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_partitioned_table \
          (partrelid, partstrat, partnatts, partdefid, partattrs, partclass, partcollation, partexprs) \
          VALUES ({}, '{}', {}, {}, {}, {}, {}, {})",
-        partrelid, partstrat, partnatts, partdefid, 
+        partrelid, partstrat, partnatts, partdefid,
         partattrs_text, partclass_text, partcollation_text, partexprs_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2221,22 +2439,26 @@ pub async fn register_partitioned_table(
         cache.insert(partrelid, metadata.clone());
     }
 
-    log::info!("Partitioned table registered for table OID {} (strategy: '{}', {} columns)", 
-               partrelid, partstrat, partnatts);
+    log::info!(
+        "Partitioned table registered for table OID {} (strategy: '{}', {} columns)",
+        partrelid,
+        partstrat,
+        partnatts
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for event trigger
 pub fn get_or_allocate_event_trigger_oid(event_trigger_name: &str) -> DFResult<i32> {
     let mut cache = EVENT_TRIGGER_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(event_trigger_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(event_trigger_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2244,12 +2466,12 @@ pub fn get_or_allocate_event_trigger_oid(event_trigger_name: &str) -> DFResult<i
 /// Register event trigger in pg_event_trigger
 pub async fn register_event_trigger(
     ctx: &SessionContext,
-    evtname: &str,            // Event trigger name
-    evtevent: &str,           // Event name (ddl_command_start, ddl_command_end, table_rewrite, sql_drop)
-    evtowner: i32,            // OID of owner
-    evtfoid: i32,             // OID of trigger function
-    evtenabled: char,         // Enabled state: 'O' = origin, 'D' = disabled, 'R' = replica, 'A' = always
-    evttags: Vec<String>,     // Array of command tags (empty array = all commands)
+    evtname: &str,        // Event trigger name
+    evtevent: &str, // Event name (ddl_command_start, ddl_command_end, table_rewrite, sql_drop)
+    evtowner: i32,  // OID of owner
+    evtfoid: i32,   // OID of trigger function
+    evtenabled: char, // Enabled state: 'O' = origin, 'D' = disabled, 'R' = replica, 'A' = always
+    evttags: Vec<String>, // Array of command tags (empty array = all commands)
 ) -> DFResult<EventTriggerMetadata> {
     let oid = get_or_allocate_event_trigger_oid(evtname)?;
 
@@ -2263,10 +2485,15 @@ pub async fn register_event_trigger(
         "INSERT INTO pg_catalog.pg_event_trigger \
          (oid, evtname, evtevent, evtowner, evtfoid, evtenabled, evttags) \
          VALUES ({}, '{}', '{}', {}, {}, '{}', {})",
-        oid, evtname.replace('\'', "''"), evtevent.replace('\'', "''"), 
-        evtowner, evtfoid, evtenabled, evttags_text
+        oid,
+        evtname.replace('\'', "''"),
+        evtevent.replace('\'', "''"),
+        evtowner,
+        evtfoid,
+        evtenabled,
+        evttags_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2293,22 +2520,27 @@ pub async fn register_event_trigger(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Event trigger '{}' registered with OID {} for event '{}' (function: {})", 
-               evtname, oid, evtevent, evtfoid);
+    log::info!(
+        "Event trigger '{}' registered with OID {} for event '{}' (function: {})",
+        evtname,
+        oid,
+        evtevent,
+        evtfoid
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for user mapping
 pub fn get_or_allocate_user_mapping_oid(mapping_key: &str) -> DFResult<i32> {
     let mut cache = USER_MAPPING_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(mapping_key) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(mapping_key.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2316,9 +2548,9 @@ pub fn get_or_allocate_user_mapping_oid(mapping_key: &str) -> DFResult<i32> {
 /// Register user mapping in pg_user_mapping
 pub async fn register_user_mapping(
     ctx: &SessionContext,
-    umuser: i32,              // OID of user (0 for public)
-    umserver: i32,            // OID of foreign server
-    umoptions: Vec<String>,   // User mapping options in "key=value" format
+    umuser: i32,            // OID of user (0 for public)
+    umserver: i32,          // OID of foreign server
+    umoptions: Vec<String>, // User mapping options in "key=value" format
 ) -> DFResult<UserMappingMetadata> {
     // Generate unique key for OID allocation
     let mapping_key = format!("{}:{}", umuser, umserver);
@@ -2336,7 +2568,7 @@ pub async fn register_user_mapping(
          VALUES ({}, {}, {}, {})",
         oid, umuser, umserver, umoptions_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2360,8 +2592,12 @@ pub async fn register_user_mapping(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("User mapping registered with OID {} for user {} server {}", 
-               oid, umuser, umserver);
+    log::info!(
+        "User mapping registered with OID {} for user {} server {}",
+        oid,
+        umuser,
+        umserver
+    );
     Ok(metadata)
 }
 
@@ -2370,9 +2606,9 @@ pub async fn register_user_mapping(
 /// Register large object in pg_largeobject_metadata
 pub async fn register_large_object(
     ctx: &SessionContext,
-    oid: i32,                 // Large object OID
-    lomowner: i32,            // OID of owner
-    lomacl: Vec<String>,      // Access privileges
+    oid: i32,            // Large object OID
+    lomowner: i32,       // OID of owner
+    lomacl: Vec<String>, // Access privileges
 ) -> DFResult<LargeObjectMetadata> {
     let lomacl_text = if lomacl.is_empty() {
         "NULL".to_string()
@@ -2386,7 +2622,7 @@ pub async fn register_large_object(
          VALUES ({}, {}, {})",
         oid, lomowner, lomacl_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2409,27 +2645,31 @@ pub async fn register_large_object(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Large object registered with OID {} (owner: {})", oid, lomowner);
+    log::info!(
+        "Large object registered with OID {} (owner: {})",
+        oid,
+        lomowner
+    );
     Ok(metadata)
 }
 
 /// Register large object data page in pg_largeobject
 pub async fn register_large_object_data(
     ctx: &SessionContext,
-    loid: i32,                // Large object OID
-    pageno: i32,              // Page number within large object
-    data: Vec<u8>,            // Page data (up to 2KB)
+    loid: i32,     // Large object OID
+    pageno: i32,   // Page number within large object
+    data: Vec<u8>, // Page data (up to 2KB)
 ) -> DFResult<LargeObjectDataMetadata> {
     // Convert binary data to bytea format for PostgreSQL
     let data_hex = hex::encode(&data);
-    
+
     let sql = format!(
         "INSERT INTO pg_catalog.pg_largeobject \
          (loid, pageno, data) \
          VALUES ({}, {}, '\\x{}')",
         loid, pageno, data_hex
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2440,11 +2680,7 @@ pub async fn register_large_object_data(
     }
 
     // Create metadata
-    let metadata = LargeObjectDataMetadata {
-        loid,
-        pageno,
-        data,
-    };
+    let metadata = LargeObjectDataMetadata { loid, pageno, data };
 
     // Cache the metadata
     {
@@ -2452,8 +2688,12 @@ pub async fn register_large_object_data(
         cache.insert((loid, pageno), metadata.clone());
     }
 
-    log::info!("Large object data registered for LOB {} page {} ({} bytes)", 
-               loid, pageno, metadata.data.len());
+    log::info!(
+        "Large object data registered for LOB {} page {} ({} bytes)",
+        loid,
+        pageno,
+        metadata.data.len()
+    );
     Ok(metadata)
 }
 
@@ -2462,14 +2702,14 @@ pub async fn register_large_object_data(
 /// Get or allocate consistent OID for text search config
 pub fn get_or_allocate_ts_config_oid(config_name: &str) -> DFResult<i32> {
     let mut cache = TS_CONFIG_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(config_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(config_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2477,10 +2717,10 @@ pub fn get_or_allocate_ts_config_oid(config_name: &str) -> DFResult<i32> {
 /// Register text search configuration in pg_ts_config
 pub async fn register_text_search_config(
     ctx: &SessionContext,
-    cfgname: &str,            // Configuration name
-    cfgnamespace: i32,        // Namespace OID
-    cfgowner: i32,            // Owner OID
-    cfgparser: i32,           // Parser OID
+    cfgname: &str,     // Configuration name
+    cfgnamespace: i32, // Namespace OID
+    cfgowner: i32,     // Owner OID
+    cfgparser: i32,    // Parser OID
 ) -> DFResult<TextSearchConfigMetadata> {
     let oid = get_or_allocate_ts_config_oid(cfgname)?;
 
@@ -2488,9 +2728,13 @@ pub async fn register_text_search_config(
         "INSERT INTO pg_catalog.pg_ts_config \
          (oid, cfgname, cfgnamespace, cfgowner, cfgparser) \
          VALUES ({}, '{}', {}, {}, {})",
-        oid, cfgname.replace('\'', "''"), cfgnamespace, cfgowner, cfgparser
+        oid,
+        cfgname.replace('\'', "''"),
+        cfgnamespace,
+        cfgowner,
+        cfgparser
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2515,22 +2759,26 @@ pub async fn register_text_search_config(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Text search config '{}' registered with OID {} (parser: {})", 
-               cfgname, oid, cfgparser);
+    log::info!(
+        "Text search config '{}' registered with OID {} (parser: {})",
+        cfgname,
+        oid,
+        cfgparser
+    );
     Ok(metadata)
 }
 
 /// Get or allocate consistent OID for text search dictionary
 pub fn get_or_allocate_ts_dict_oid(dict_name: &str) -> DFResult<i32> {
     let mut cache = TS_DICT_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(dict_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(dict_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2538,24 +2786,30 @@ pub fn get_or_allocate_ts_dict_oid(dict_name: &str) -> DFResult<i32> {
 /// Register text search dictionary in pg_ts_dict
 pub async fn register_text_search_dict(
     ctx: &SessionContext,
-    dictname: &str,           // Dictionary name
-    dictnamespace: i32,       // Namespace OID
-    dictowner: i32,           // Owner OID
-    dicttemplate: i32,        // Template OID
+    dictname: &str,               // Dictionary name
+    dictnamespace: i32,           // Namespace OID
+    dictowner: i32,               // Owner OID
+    dicttemplate: i32,            // Template OID
     dictinitoption: Option<&str>, // Initialization options
 ) -> DFResult<TextSearchDictMetadata> {
     let oid = get_or_allocate_ts_dict_oid(dictname)?;
 
-    let initoption_text = dictinitoption.map(|opt| format!("'{}'", opt.replace('\'', "''")))
-                                       .unwrap_or_else(|| "NULL".to_string());
+    let initoption_text = dictinitoption
+        .map(|opt| format!("'{}'", opt.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_ts_dict \
          (oid, dictname, dictnamespace, dictowner, dicttemplate, dictinitoption) \
          VALUES ({}, '{}', {}, {}, {}, {})",
-        oid, dictname.replace('\'', "''"), dictnamespace, dictowner, dicttemplate, initoption_text
+        oid,
+        dictname.replace('\'', "''"),
+        dictnamespace,
+        dictowner,
+        dicttemplate,
+        initoption_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2581,8 +2835,12 @@ pub async fn register_text_search_dict(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Text search dictionary '{}' registered with OID {} (template: {})", 
-               dictname, oid, dicttemplate);
+    log::info!(
+        "Text search dictionary '{}' registered with OID {} (template: {})",
+        dictname,
+        oid,
+        dicttemplate
+    );
     Ok(metadata)
 }
 
@@ -2591,14 +2849,14 @@ pub async fn register_text_search_dict(
 /// Get or allocate consistent OID for extended statistics
 pub fn get_or_allocate_ext_stats_oid(stats_name: &str) -> DFResult<i32> {
     let mut cache = EXT_STATS_OID_CACHE.lock().unwrap();
-    
+
     if let Some(&existing_oid) = cache.get(stats_name) {
         return Ok(existing_oid);
     }
-    
+
     let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(new_oid, false)?;
-    
+
     cache.insert(stats_name.to_string(), new_oid);
     Ok(new_oid)
 }
@@ -2606,20 +2864,27 @@ pub fn get_or_allocate_ext_stats_oid(stats_name: &str) -> DFResult<i32> {
 /// Register extended statistics in pg_statistic_ext
 pub async fn register_extended_statistic(
     ctx: &SessionContext,
-    stxrelid: i32,            // Table OID
-    stxname: &str,            // Statistics object name
-    stxnamespace: i32,        // Namespace OID
-    stxowner: i32,            // Owner OID
-    stxkeys: Vec<i16>,        // Column numbers
-    stxkind: Vec<char>,       // Statistics kinds: 'd' = ndistinct, 'f' = functional deps, 'm' = MCV, 'e' = expression
-    stxexprs: Option<&str>,   // Expressions (serialized)
+    stxrelid: i32,          // Table OID
+    stxname: &str,          // Statistics object name
+    stxnamespace: i32,      // Namespace OID
+    stxowner: i32,          // Owner OID
+    stxkeys: Vec<i16>,      // Column numbers
+    stxkind: Vec<char>, // Statistics kinds: 'd' = ndistinct, 'f' = functional deps, 'm' = MCV, 'e' = expression
+    stxexprs: Option<&str>, // Expressions (serialized)
 ) -> DFResult<ExtendedStatisticMetadata> {
     let oid = get_or_allocate_ext_stats_oid(stxname)?;
 
     let stxkeys_text = if stxkeys.is_empty() {
         "NULL".to_string()
     } else {
-        format!("'{{{}}}'", stxkeys.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
+        format!(
+            "'{{{}}}'",
+            stxkeys
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
     };
 
     let stxkind_text = if stxkind.is_empty() {
@@ -2628,17 +2893,24 @@ pub async fn register_extended_statistic(
         format!("'{{{}}}'", stxkind.iter().collect::<String>())
     };
 
-    let stxexprs_text = stxexprs.map(|e| format!("'{}'", e.replace('\'', "''")))
-                               .unwrap_or_else(|| "NULL".to_string());
+    let stxexprs_text = stxexprs
+        .map(|e| format!("'{}'", e.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_statistic_ext \
          (oid, stxrelid, stxname, stxnamespace, stxowner, stxkeys, stxkind, stxexprs) \
          VALUES ({}, {}, '{}', {}, {}, {}, {}, {})",
-        oid, stxrelid, stxname.replace('\'', "''"), stxnamespace, stxowner,
-        stxkeys_text, stxkind_text, stxexprs_text
+        oid,
+        stxrelid,
+        stxname.replace('\'', "''"),
+        stxnamespace,
+        stxowner,
+        stxkeys_text,
+        stxkind_text,
+        stxexprs_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2666,29 +2938,38 @@ pub async fn register_extended_statistic(
         cache.insert(oid, metadata.clone());
     }
 
-    log::info!("Extended statistics '{}' registered with OID {} for table {} ({} columns)", 
-               stxname, oid, stxrelid, metadata.stxkeys.len());
+    log::info!(
+        "Extended statistics '{}' registered with OID {} for table {} ({} columns)",
+        stxname,
+        oid,
+        stxrelid,
+        metadata.stxkeys.len()
+    );
     Ok(metadata)
 }
 
 /// Register extended statistics data in pg_statistic_ext_data
 pub async fn register_extended_statistic_data(
     ctx: &SessionContext,
-    stxoid: i32,              // Statistics object OID
-    stxdinherit: bool,        // True if inherited statistics
-    stxdndistinct: Option<&str>, // N-distinct statistics data
+    stxoid: i32,                    // Statistics object OID
+    stxdinherit: bool,              // True if inherited statistics
+    stxdndistinct: Option<&str>,    // N-distinct statistics data
     stxddependencies: Option<&str>, // Functional dependencies data
-    stxdmcv: Option<&str>,    // Most Common Values data
-    stxdexpr: Option<&str>,   // Expression statistics data
+    stxdmcv: Option<&str>,          // Most Common Values data
+    stxdexpr: Option<&str>,         // Expression statistics data
 ) -> DFResult<ExtendedStatisticDataMetadata> {
-    let ndistinct_text = stxdndistinct.map(|s| format!("'{}'", s.replace('\'', "''")))
-                                     .unwrap_or_else(|| "NULL".to_string());
-    let dependencies_text = stxddependencies.map(|s| format!("'{}'", s.replace('\'', "''")))
-                                           .unwrap_or_else(|| "NULL".to_string());
-    let mcv_text = stxdmcv.map(|s| format!("'{}'", s.replace('\'', "''")))
-                          .unwrap_or_else(|| "NULL".to_string());
-    let expr_text = stxdexpr.map(|s| format!("'{}'", s.replace('\'', "''")))
-                           .unwrap_or_else(|| "NULL".to_string());
+    let ndistinct_text = stxdndistinct
+        .map(|s| format!("'{}'", s.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
+    let dependencies_text = stxddependencies
+        .map(|s| format!("'{}'", s.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
+    let mcv_text = stxdmcv
+        .map(|s| format!("'{}'", s.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
+    let expr_text = stxdexpr
+        .map(|s| format!("'{}'", s.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_statistic_ext_data \
@@ -2696,7 +2977,7 @@ pub async fn register_extended_statistic_data(
          VALUES ({}, {}, {}, {}, {}, {})",
         stxoid, stxdinherit, ndistinct_text, dependencies_text, mcv_text, expr_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2722,8 +3003,11 @@ pub async fn register_extended_statistic_data(
         cache.insert(stxoid, metadata.clone());
     }
 
-    log::info!("Extended statistics data registered for stats OID {} (inherit: {})", 
-               stxoid, stxdinherit);
+    log::info!(
+        "Extended statistics data registered for stats OID {} (inherit: {})",
+        stxoid,
+        stxdinherit
+    );
     Ok(metadata)
 }
 
@@ -2732,8 +3016,8 @@ pub async fn register_extended_statistic_data(
 /// Register publication namespace in pg_publication_namespace
 pub async fn register_publication_namespace(
     ctx: &SessionContext,
-    pnpubid: i32,             // Publication OID
-    pnnspid: i32,             // Namespace OID
+    pnpubid: i32, // Publication OID
+    pnnspid: i32, // Namespace OID
 ) -> DFResult<PublicationNamespaceMetadata> {
     let sql = format!(
         "INSERT INTO pg_catalog.pg_publication_namespace \
@@ -2741,7 +3025,7 @@ pub async fn register_publication_namespace(
          VALUES ({}, {})",
         pnpubid, pnnspid
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2752,10 +3036,7 @@ pub async fn register_publication_namespace(
     }
 
     // Create metadata
-    let metadata = PublicationNamespaceMetadata {
-        pnpubid,
-        pnnspid,
-    };
+    let metadata = PublicationNamespaceMetadata { pnpubid, pnnspid };
 
     // Cache the metadata
     {
@@ -2763,24 +3044,28 @@ pub async fn register_publication_namespace(
         cache.insert((pnpubid, pnnspid), metadata.clone());
     }
 
-    log::info!("Publication namespace mapping registered: publication {} -> namespace {}", 
-               pnpubid, pnnspid);
+    log::info!(
+        "Publication namespace mapping registered: publication {} -> namespace {}",
+        pnpubid,
+        pnnspid
+    );
     Ok(metadata)
 }
 
 /// Register replication origin in pg_replication_origin
 pub async fn register_replication_origin(
     ctx: &SessionContext,
-    roident: i32,             // Origin identifier
-    roname: &str,             // Origin name
+    roident: i32, // Origin identifier
+    roname: &str, // Origin name
 ) -> DFResult<ReplicationOriginMetadata> {
     let sql = format!(
         "INSERT INTO pg_catalog.pg_replication_origin \
          (roident, roname) \
          VALUES ({}, '{}')",
-        roident, roname.replace('\'', "''")
+        roident,
+        roname.replace('\'', "''")
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2802,20 +3087,25 @@ pub async fn register_replication_origin(
         cache.insert(roname.to_string(), metadata.clone());
     }
 
-    log::info!("Replication origin '{}' registered with identifier {}", roname, roident);
+    log::info!(
+        "Replication origin '{}' registered with identifier {}",
+        roname,
+        roident
+    );
     Ok(metadata)
 }
 
 /// Register subscription relation in pg_subscription_rel
 pub async fn register_subscription_rel(
     ctx: &SessionContext,
-    srsubid: i32,             // Subscription OID
-    srrelid: i32,             // Relation OID
-    srsubstate: char,         // Subscription state: 'i' = initialize, 'd' = data copy, 's' = synchronized, 'r' = ready
-    srsublsn: Option<&str>,   // LSN of the subscription
+    srsubid: i32,           // Subscription OID
+    srrelid: i32,           // Relation OID
+    srsubstate: char, // Subscription state: 'i' = initialize, 'd' = data copy, 's' = synchronized, 'r' = ready
+    srsublsn: Option<&str>, // LSN of the subscription
 ) -> DFResult<SubscriptionRelMetadata> {
-    let lsn_text = srsublsn.map(|lsn| format!("'{}'", lsn.replace('\'', "''")))
-                          .unwrap_or_else(|| "NULL".to_string());
+    let lsn_text = srsublsn
+        .map(|lsn| format!("'{}'", lsn.replace('\'', "''")))
+        .unwrap_or_else(|| "NULL".to_string());
 
     let sql = format!(
         "INSERT INTO pg_catalog.pg_subscription_rel \
@@ -2823,7 +3113,7 @@ pub async fn register_subscription_rel(
          VALUES ({}, {}, '{}', {})",
         srsubid, srrelid, srsubstate, lsn_text
     );
-    
+
     match ctx.sql(&sql).await {
         Ok(df) => {
             df.collect().await?;
@@ -2847,8 +3137,12 @@ pub async fn register_subscription_rel(
         cache.insert((srsubid, srrelid), metadata.clone());
     }
 
-    log::info!("Subscription relation registered: subscription {} -> relation {} (state: '{}')", 
-               srsubid, srrelid, srsubstate);
+    log::info!(
+        "Subscription relation registered: subscription {} -> relation {} (state: '{}')",
+        srsubid,
+        srrelid,
+        srsubstate
+    );
     Ok(metadata)
 }
 
@@ -2957,7 +3251,7 @@ pub async fn register_user_tables(
 
     let table_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(table_oid, false)?;
-    
+
     let type_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
     validate_oid_range(type_oid, false)?;
 
@@ -3074,7 +3368,7 @@ mod tests {
         // Test that lazy loading structures are properly initialized
         assert!(PG_TYPE_DATA.lock().unwrap().is_none());
         assert!(PG_DESCRIPTION_DATA.lock().unwrap().is_none());
-        
+
         // Test lazy loading functions don't panic on missing files
         // In real usage, files would exist, but for testing we handle gracefully
         let result = load_pg_type_data();
@@ -3097,7 +3391,7 @@ mod tests {
         assert!(validate_oid_range(1, true).is_ok());
         assert!(validate_oid_range(STATIC_OID_RANGE_MAX, true).is_ok());
         assert!(validate_oid_range(STATIC_OID_RANGE_MAX + 1, true).is_err());
-        
+
         assert!(validate_oid_range(DYNAMIC_OID_RANGE_MIN, false).is_ok());
         assert!(validate_oid_range(DYNAMIC_OID_RANGE_MIN - 1, false).is_err());
         assert!(validate_oid_range(100000, false).is_ok());
@@ -3107,16 +3401,16 @@ mod tests {
     fn test_type_oid_cache_performance() {
         // Test that OID cache provides consistent performance
         let start = std::time::Instant::now();
-        
+
         // First call - should allocate new OID
         let _oid1 = get_or_allocate_type_oid("perf_test_type").unwrap();
         let first_duration = start.elapsed();
-        
+
         let start2 = std::time::Instant::now();
         // Second call - should use cached OID
         let _oid2 = get_or_allocate_type_oid("perf_test_type").unwrap();
         let second_duration = start2.elapsed();
-        
+
         // Cached access should be faster than first allocation
         assert!(second_duration <= first_duration);
     }
@@ -3139,14 +3433,14 @@ mod tests {
             let cache = TYPE_OID_CACHE.lock().unwrap();
             !cache.is_empty()
         };
-        
+
         // If cache is populated, verify some basic types exist
         if type_cache_populated {
             let cache = TYPE_OID_CACHE.lock().unwrap();
             // Check for some common PostgreSQL types that should be in pg_type
-            let has_basic_types = cache.contains_key("int4") || 
-                                 cache.contains_key("text") || 
-                                 cache.contains_key("bool");
+            let has_basic_types = cache.contains_key("int4")
+                || cache.contains_key("text")
+                || cache.contains_key("bool");
             if !has_basic_types {
                 // This is OK if we don't have the full YAML data in tests
                 log::debug!("Basic types not found in cache during test");
@@ -3155,7 +3449,10 @@ mod tests {
 
         // Test that consistency check can run without errors
         let consistency_result = ensure_static_table_oid_consistency(&ctx).await;
-        assert!(consistency_result.is_ok(), "OID consistency check should not fail");
+        assert!(
+            consistency_result.is_ok(),
+            "OID consistency check should not fail"
+        );
     }
 
     #[tokio::test]
@@ -3177,7 +3474,7 @@ mod tests {
         let columns = vec![
             ColumnMetadata {
                 column_name: "id".to_string(),
-                column_oid: 0, // Will be assigned
+                column_oid: 0,     // Will be assigned
                 data_type_oid: 23, // int4
                 column_number: 1,
                 is_nullable: false,
@@ -3195,29 +3492,25 @@ mod tests {
             },
         ];
 
-        let constraints = vec![
-            ConstraintMetadata {
-                constraint_oid: 0,
-                constraint_name: "users_pkey".to_string(),
-                constraint_type: ConstraintType::PrimaryKey,
-                table_oid: 0, // Will be set
-                columns: vec![1], // id column
-                referenced_table_oid: None,
-                referenced_columns: vec![],
-            }
-        ];
+        let constraints = vec![ConstraintMetadata {
+            constraint_oid: 0,
+            constraint_name: "users_pkey".to_string(),
+            constraint_type: ConstraintType::PrimaryKey,
+            table_oid: 0,     // Will be set
+            columns: vec![1], // id column
+            referenced_table_oid: None,
+            referenced_columns: vec![],
+        }];
 
-        let indexes = vec![
-            IndexMetadata {
-                index_oid: 0,
-                index_name: "users_pkey_idx".to_string(),
-                table_oid: 0, // Will be set
-                columns: vec![1], // id column
-                is_unique: true,
-                is_primary: true,
-                index_type: "btree".to_string(),
-            }
-        ];
+        let indexes = vec![IndexMetadata {
+            index_oid: 0,
+            index_name: "users_pkey_idx".to_string(),
+            table_oid: 0,     // Will be set
+            columns: vec![1], // id column
+            is_unique: true,
+            is_primary: true,
+            index_type: "btree".to_string(),
+        }];
 
         // Register enhanced table
         let result = register_enhanced_table(
@@ -3229,13 +3522,18 @@ mod tests {
             columns,
             constraints,
             indexes,
-        ).await;
+        )
+        .await;
 
         if let Err(ref e) = result {
             log::error!("Enhanced table registration failed: {}", e);
         }
-        assert!(result.is_ok(), "Enhanced table registration should succeed: {:?}", result);
-        
+        assert!(
+            result.is_ok(),
+            "Enhanced table registration should succeed: {:?}",
+            result
+        );
+
         let metadata = result.unwrap();
         assert_eq!(metadata.table_name, "users");
         assert_eq!(metadata.columns.len(), 2);
@@ -3280,7 +3578,10 @@ mod tests {
         // Test constraint OID allocation
         let constraint_oid1 = get_or_allocate_constraint_oid("test_constraint").unwrap();
         let constraint_oid2 = get_or_allocate_constraint_oid("test_constraint").unwrap();
-        assert_eq!(constraint_oid1, constraint_oid2, "Constraint OIDs should be consistent");
+        assert_eq!(
+            constraint_oid1, constraint_oid2,
+            "Constraint OIDs should be consistent"
+        );
 
         // Test index OID allocation
         let index_oid1 = get_or_allocate_index_oid("test_index").unwrap();
@@ -3289,7 +3590,10 @@ mod tests {
 
         // Ensure different objects get different OIDs
         let different_constraint_oid = get_or_allocate_constraint_oid("other_constraint").unwrap();
-        assert_ne!(constraint_oid1, different_constraint_oid, "Different constraints should have different OIDs");
+        assert_ne!(
+            constraint_oid1, different_constraint_oid,
+            "Different constraints should have different OIDs"
+        );
     }
 
     #[tokio::test]
@@ -3306,7 +3610,10 @@ mod tests {
 
         // Test that enhanced consistency check runs without errors
         let consistency_result = ensure_enhanced_oid_consistency(&ctx).await;
-        assert!(consistency_result.is_ok(), "Enhanced OID consistency check should not fail");
+        assert!(
+            consistency_result.is_ok(),
+            "Enhanced OID consistency check should not fail"
+        );
     }
 
     #[tokio::test]
@@ -3323,19 +3630,18 @@ mod tests {
 
         // Register enhanced database
         let result = register_enhanced_database(
-            &ctx,
-            "test_db",
-            "postgres",
-            6,    // UTF8
-            "C",
-            "C",
-            false,  // not template
-            true,   // allow connections
-            100,    // connection limit
-        ).await;
+            &ctx, "test_db", "postgres", 6, // UTF8
+            "C", "C", false, // not template
+            true,  // allow connections
+            100,   // connection limit
+        )
+        .await;
 
-        assert!(result.is_ok(), "Enhanced database registration should succeed");
-        
+        assert!(
+            result.is_ok(),
+            "Enhanced database registration should succeed"
+        );
+
         let metadata = result.unwrap();
         assert_eq!(metadata.database_name, "test_db");
         assert_eq!(metadata.encoding, 6);
@@ -3363,13 +3669,17 @@ mod tests {
             "test_tablespace",
             "postgres",
             Some("/var/lib/postgresql/tablespaces/test"),
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Tablespace registration should succeed");
-        
+
         let metadata = result.unwrap();
         assert_eq!(metadata.tablespace_name, "test_tablespace");
-        assert_eq!(metadata.location, Some("/var/lib/postgresql/tablespaces/test".to_string()));
+        assert_eq!(
+            metadata.location,
+            Some("/var/lib/postgresql/tablespaces/test".to_string())
+        );
     }
 
     #[tokio::test]
@@ -3394,11 +3704,12 @@ mod tests {
             true,  // can login
             false, // not replication
             Some("password_hash"),
-            10,    // connection limit
-        ).await;
+            10, // connection limit
+        )
+        .await;
 
         assert!(result.is_ok(), "User registration should succeed");
-        
+
         let metadata = result.unwrap();
         assert_eq!(metadata.username, "test_user");
         assert!(!metadata.is_superuser);
@@ -3426,7 +3737,10 @@ mod tests {
 
         // Ensure different objects get different OIDs
         let different_db_oid = get_or_allocate_database_oid("other_db").unwrap();
-        assert_ne!(db_oid1, different_db_oid, "Different databases should have different OIDs");
+        assert_ne!(
+            db_oid1, different_db_oid,
+            "Different databases should have different OIDs"
+        );
     }
 
     #[tokio::test]
@@ -3443,7 +3757,10 @@ mod tests {
 
         // Test that system initialization runs without errors
         let init_result = initialize_system_catalog(&ctx).await;
-        assert!(init_result.is_ok(), "System catalog initialization should not fail");
+        assert!(
+            init_result.is_ok(),
+            "System catalog initialization should not fail"
+        );
     }
 
     #[tokio::test]
@@ -3476,11 +3793,12 @@ mod tests {
             true,         // strict
             true,         // immutable
             Some("SELECT $1 > 0 AND length($2) > 0"),
-            10.0,         // cost
-        ).await;
+            10.0, // cost
+        )
+        .await;
 
         assert!(result.is_ok(), "Function registration should succeed");
-        
+
         let metadata = result.unwrap();
         assert_eq!(metadata.function_name, "test_function");
         assert_eq!(metadata.arg_types, vec![23, 25]);
@@ -3521,7 +3839,9 @@ mod tests {
             true,         // immutable
             None,         // no function body
             1.0,          // cost
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         // Register operator
         let result = register_operator(
@@ -3529,14 +3849,15 @@ mod tests {
             "@@",
             "public",
             "postgres",
-            Some(23),     // left type: int4
-            Some(23),     // right type: int4
-            16,           // result type: bool
+            Some(23), // left type: int4
+            Some(23), // right type: int4
+            16,       // result type: bool
             func_result.function_oid,
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Operator registration should succeed");
-        
+
         let metadata = result.unwrap();
         assert_eq!(metadata.operator_name, "@@");
         assert_eq!(metadata.left_type_oid, Some(23));
@@ -3576,7 +3897,9 @@ mod tests {
             true,         // immutable
             None,         // no function body
             1.0,          // cost
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         // Register aggregate
         let result = register_aggregate(
@@ -3584,13 +3907,14 @@ mod tests {
             "test_sum",
             "public",
             trans_func.function_oid,
-            None,         // no final function
-            23,           // int4 transition type
-            Some("0"),    // initial value
-        ).await;
+            None,      // no final function
+            23,        // int4 transition type
+            Some("0"), // initial value
+        )
+        .await;
 
         assert!(result.is_ok(), "Aggregate registration should succeed");
-        
+
         let metadata = result.unwrap();
         assert_eq!(metadata.transition_function_oid, trans_func.function_oid);
         assert_eq!(metadata.transition_type_oid, 23);
@@ -3619,10 +3943,16 @@ mod tests {
 
         // Ensure different objects get different OIDs
         let different_func_oid = get_or_allocate_function_oid("other_func").unwrap();
-        assert_ne!(func_oid1, different_func_oid, "Different functions should have different OIDs");
-        
+        assert_ne!(
+            func_oid1, different_func_oid,
+            "Different functions should have different OIDs"
+        );
+
         let different_trig_oid = get_or_allocate_trigger_oid("other_trigger").unwrap();
-        assert_ne!(trig_oid1, different_trig_oid, "Different triggers should have different OIDs");
+        assert_ne!(
+            trig_oid1, different_trig_oid,
+            "Different triggers should have different OIDs"
+        );
     }
 
     #[tokio::test]
@@ -3644,7 +3974,7 @@ mod tests {
             "postgres",
             "plpgsql",
             vec![],
-            2279, // trigger type
+            2279,  // trigger type
             false, // not aggregate
             false, // not window
             false, // not security definer
@@ -3652,7 +3982,9 @@ mod tests {
             false, // not immutable
             Some("BEGIN RETURN NEW; END;"),
             100.0,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         // Create trigger type for INSERT BEFORE ROW trigger
         let trigger_type = TriggerType {
@@ -3677,10 +4009,11 @@ mod tests {
             TriggerEnabledState::Origin,
             false, // not internal
             Some("NEW.id IS NOT NULL"),
-            None, // no old table
+            None,             // no old table
             Some("new_vals"), // new table
             vec!["arg1".to_string(), "arg2".to_string()],
-        ).await;
+        )
+        .await;
 
         assert!(result.is_ok(), "Trigger registration should succeed");
         let metadata = result.unwrap();
@@ -3692,7 +4025,10 @@ mod tests {
         assert_eq!(metadata.trigger_type.before, true);
         assert_eq!(metadata.trigger_type.insert, true);
         assert_eq!(metadata.trigger_type.per_row, true);
-        assert!(matches!(metadata.enabled_state, TriggerEnabledState::Origin));
+        assert!(matches!(
+            metadata.enabled_state,
+            TriggerEnabledState::Origin
+        ));
         assert_eq!(metadata.is_internal, false);
         assert_eq!(metadata.when_clause, Some("NEW.id IS NOT NULL".to_string()));
         assert_eq!(metadata.transition_new_table, Some("new_vals".to_string()));
@@ -3714,14 +4050,17 @@ mod tests {
 
         // Test role membership registration
         let auth_result = register_auth_member(
-            &ctx,
-            100,  // roleid
+            &ctx, 100,  // roleid
             200,  // member
             10,   // grantor (superuser)
             true, // admin_option
-        ).await;
+        )
+        .await;
 
-        assert!(auth_result.is_ok(), "Auth member registration should succeed");
+        assert!(
+            auth_result.is_ok(),
+            "Auth member registration should succeed"
+        );
         let auth_metadata = auth_result.unwrap();
         assert_eq!(auth_metadata.roleid, 100);
         assert_eq!(auth_metadata.member, 200);
@@ -3734,10 +4073,17 @@ mod tests {
             10,   // defaclrole
             2200, // defaclnamespace (public schema)
             'r',  // defaclobjtype (relations)
-            vec!["postgres=arwdDxt/postgres".to_string(), "=r/postgres".to_string()],
-        ).await;
+            vec![
+                "postgres=arwdDxt/postgres".to_string(),
+                "=r/postgres".to_string(),
+            ],
+        )
+        .await;
 
-        assert!(acl_result.is_ok(), "Default ACL registration should succeed");
+        assert!(
+            acl_result.is_ok(),
+            "Default ACL registration should succeed"
+        );
         let acl_metadata = acl_result.unwrap();
         assert_eq!(acl_metadata.defaclrole, 10);
         assert_eq!(acl_metadata.defaclnamespace, 2200);
@@ -3752,9 +4098,13 @@ mod tests {
             0,    // objsubid (whole object)
             'i',  // privtype (initdb)
             vec!["postgres=arwdDxt/postgres".to_string()],
-        ).await;
+        )
+        .await;
 
-        assert!(init_privs_result.is_ok(), "Init privs registration should succeed");
+        assert!(
+            init_privs_result.is_ok(),
+            "Init privs registration should succeed"
+        );
         let init_metadata = init_privs_result.unwrap();
         assert_eq!(init_metadata.objoid, 1259);
         assert_eq!(init_metadata.classoid, 1259);
@@ -3764,14 +4114,18 @@ mod tests {
         // Test security label registration
         let label_result = register_security_label(
             &ctx,
-            1259,      // objoid (pg_class)
-            1259,      // classoid (pg_class itself)
-            0,         // objsubid (whole object)
-            "selinux", // provider
+            1259,                                   // objoid (pg_class)
+            1259,                                   // classoid (pg_class itself)
+            0,                                      // objsubid (whole object)
+            "selinux",                              // provider
             "system_u:object_r:postgresql_db_t:s0", // label
-        ).await;
+        )
+        .await;
 
-        assert!(label_result.is_ok(), "Security label registration should succeed");
+        assert!(
+            label_result.is_ok(),
+            "Security label registration should succeed"
+        );
         let label_metadata = label_result.unwrap();
         assert_eq!(label_metadata.objoid, 1259);
         assert_eq!(label_metadata.classoid, 1259);
@@ -3788,7 +4142,10 @@ mod tests {
         assert_eq!(acl_oid1, acl_oid2, "Default ACL OIDs should be consistent");
 
         let different_acl_oid = get_or_allocate_default_acl_oid("10:0:f").unwrap();
-        assert_ne!(acl_oid1, different_acl_oid, "Different ACL keys should have different OIDs");
+        assert_ne!(
+            acl_oid1, different_acl_oid,
+            "Different ACL keys should have different OIDs"
+        );
     }
 
     #[tokio::test]
@@ -3805,17 +4162,21 @@ mod tests {
         // Test partitioned table registration
         let partition_result = register_partitioned_table(
             &ctx,
-            16384,  // partrelid (table OID)
-            'r',    // partstrat (range partitioning)
-            2,      // partnatts (2 partitioning columns)
-            0,      // partdefid (no default partition)
-            vec![1, 2],    // partattrs (column numbers)
-            vec![1994, 1994], // partclass (operator class OIDs)
-            vec![100, 100],   // partcollation (collation OIDs)
+            16384,                    // partrelid (table OID)
+            'r',                      // partstrat (range partitioning)
+            2,                        // partnatts (2 partitioning columns)
+            0,                        // partdefid (no default partition)
+            vec![1, 2],               // partattrs (column numbers)
+            vec![1994, 1994],         // partclass (operator class OIDs)
+            vec![100, 100],           // partcollation (collation OIDs)
             Some("id, created_date"), // partexprs
-        ).await;
+        )
+        .await;
 
-        assert!(partition_result.is_ok(), "Partitioned table registration should succeed");
+        assert!(
+            partition_result.is_ok(),
+            "Partitioned table registration should succeed"
+        );
         let partition_metadata = partition_result.unwrap();
         assert_eq!(partition_metadata.partrelid, 16384);
         assert_eq!(partition_metadata.partstrat, 'r');
@@ -3831,9 +4192,13 @@ mod tests {
             12345, // evtfoid (trigger function OID)
             'O',   // evtenabled (origin)
             vec!["CREATE TABLE".to_string(), "DROP TABLE".to_string()],
-        ).await;
+        )
+        .await;
 
-        assert!(event_trigger_result.is_ok(), "Event trigger registration should succeed");
+        assert!(
+            event_trigger_result.is_ok(),
+            "Event trigger registration should succeed"
+        );
         let event_metadata = event_trigger_result.unwrap();
         assert_eq!(event_metadata.evtname, "ddl_log_trigger");
         assert_eq!(event_metadata.evtevent, "ddl_command_start");
@@ -3843,12 +4208,19 @@ mod tests {
         // Test user mapping registration
         let mapping_result = register_user_mapping(
             &ctx,
-            100,    // umuser (user OID)
-            200,    // umserver (foreign server OID)
-            vec!["host=remote.example.com".to_string(), "port=5432".to_string()],
-        ).await;
+            100, // umuser (user OID)
+            200, // umserver (foreign server OID)
+            vec![
+                "host=remote.example.com".to_string(),
+                "port=5432".to_string(),
+            ],
+        )
+        .await;
 
-        assert!(mapping_result.is_ok(), "User mapping registration should succeed");
+        assert!(
+            mapping_result.is_ok(),
+            "User mapping registration should succeed"
+        );
         let mapping_metadata = mapping_result.unwrap();
         assert_eq!(mapping_metadata.umuser, 100);
         assert_eq!(mapping_metadata.umserver, 200);
@@ -3869,12 +4241,19 @@ mod tests {
         // Test large object metadata registration
         let lob_result = register_large_object(
             &ctx,
-            16400,  // oid (large object OID)
-            10,     // lomowner (owner OID)
-            vec!["postgres=rw/postgres".to_string(), "public=r/postgres".to_string()],
-        ).await;
+            16400, // oid (large object OID)
+            10,    // lomowner (owner OID)
+            vec![
+                "postgres=rw/postgres".to_string(),
+                "public=r/postgres".to_string(),
+            ],
+        )
+        .await;
 
-        assert!(lob_result.is_ok(), "Large object registration should succeed");
+        assert!(
+            lob_result.is_ok(),
+            "Large object registration should succeed"
+        );
         let lob_metadata = lob_result.unwrap();
         assert_eq!(lob_metadata.oid, 16400);
         assert_eq!(lob_metadata.lomowner, 10);
@@ -3884,12 +4263,16 @@ mod tests {
         let test_data = b"Hello, large object world!";
         let lob_data_result = register_large_object_data(
             &ctx,
-            16400,  // loid (large object OID)
-            0,      // pageno (first page)
+            16400, // loid (large object OID)
+            0,     // pageno (first page)
             test_data.to_vec(),
-        ).await;
+        )
+        .await;
 
-        assert!(lob_data_result.is_ok(), "Large object data registration should succeed");
+        assert!(
+            lob_data_result.is_ok(),
+            "Large object data registration should succeed"
+        );
         let lob_data_metadata = lob_data_result.unwrap();
         assert_eq!(lob_data_metadata.loid, 16400);
         assert_eq!(lob_data_metadata.pageno, 0);
@@ -3901,18 +4284,30 @@ mod tests {
         // Test Phase 4C OID allocation for advanced features
         let event_oid1 = get_or_allocate_event_trigger_oid("test_event_trigger").unwrap();
         let event_oid2 = get_or_allocate_event_trigger_oid("test_event_trigger").unwrap();
-        assert_eq!(event_oid1, event_oid2, "Event trigger OIDs should be consistent");
+        assert_eq!(
+            event_oid1, event_oid2,
+            "Event trigger OIDs should be consistent"
+        );
 
         let mapping_oid1 = get_or_allocate_user_mapping_oid("100:200").unwrap();
         let mapping_oid2 = get_or_allocate_user_mapping_oid("100:200").unwrap();
-        assert_eq!(mapping_oid1, mapping_oid2, "User mapping OIDs should be consistent");
+        assert_eq!(
+            mapping_oid1, mapping_oid2,
+            "User mapping OIDs should be consistent"
+        );
 
         // Ensure different objects get different OIDs
         let different_event_oid = get_or_allocate_event_trigger_oid("other_event_trigger").unwrap();
-        assert_ne!(event_oid1, different_event_oid, "Different event triggers should have different OIDs");
+        assert_ne!(
+            event_oid1, different_event_oid,
+            "Different event triggers should have different OIDs"
+        );
 
         let different_mapping_oid = get_or_allocate_user_mapping_oid("101:201").unwrap();
-        assert_ne!(mapping_oid1, different_mapping_oid, "Different user mappings should have different OIDs");
+        assert_ne!(
+            mapping_oid1, different_mapping_oid,
+            "Different user mappings should have different OIDs"
+        );
     }
 
     #[tokio::test]
@@ -3928,14 +4323,17 @@ mod tests {
 
         // Test text search configuration registration
         let config_result = register_text_search_config(
-            &ctx,
-            "english",      // cfgname
-            2200,           // cfgnamespace (public)
-            10,             // cfgowner (superuser)
-            12345,          // cfgparser (parser OID)
-        ).await;
+            &ctx, "english", // cfgname
+            2200,      // cfgnamespace (public)
+            10,        // cfgowner (superuser)
+            12345,     // cfgparser (parser OID)
+        )
+        .await;
 
-        assert!(config_result.is_ok(), "Text search config registration should succeed");
+        assert!(
+            config_result.is_ok(),
+            "Text search config registration should succeed"
+        );
         let config_metadata = config_result.unwrap();
         assert_eq!(config_metadata.cfgname, "english");
         assert_eq!(config_metadata.cfgnamespace, 2200);
@@ -3945,19 +4343,26 @@ mod tests {
         // Test text search dictionary registration
         let dict_result = register_text_search_dict(
             &ctx,
-            "english_stem",     // dictname
-            2200,               // dictnamespace (public)
-            10,                 // dictowner (superuser)
-            54321,              // dicttemplate (template OID)
+            "english_stem",              // dictname
+            2200,                        // dictnamespace (public)
+            10,                          // dictowner (superuser)
+            54321,                       // dicttemplate (template OID)
             Some("StopWords = english"), // dictinitoption
-        ).await;
+        )
+        .await;
 
-        assert!(dict_result.is_ok(), "Text search dict registration should succeed");
+        assert!(
+            dict_result.is_ok(),
+            "Text search dict registration should succeed"
+        );
         let dict_metadata = dict_result.unwrap();
         assert_eq!(dict_metadata.dictname, "english_stem");
         assert_eq!(dict_metadata.dictnamespace, 2200);
         assert_eq!(dict_metadata.dicttemplate, 54321);
-        assert_eq!(dict_metadata.dictinitoption, Some("StopWords = english".to_string()));
+        assert_eq!(
+            dict_metadata.dictinitoption,
+            Some("StopWords = english".to_string())
+        );
     }
 
     #[tokio::test]
@@ -3974,16 +4379,20 @@ mod tests {
         // Test extended statistics registration
         let stats_result = register_extended_statistic(
             &ctx,
-            16384,              // stxrelid (table OID)
-            "user_stats",       // stxname
-            2200,               // stxnamespace (public)
-            10,                 // stxowner (superuser)
-            vec![1, 2, 3],      // stxkeys (column numbers)
-            vec!['d', 'f', 'm'], // stxkind (ndistinct, functional deps, MCV)
+            16384,                             // stxrelid (table OID)
+            "user_stats",                      // stxname
+            2200,                              // stxnamespace (public)
+            10,                                // stxowner (superuser)
+            vec![1, 2, 3],                     // stxkeys (column numbers)
+            vec!['d', 'f', 'm'],               // stxkind (ndistinct, functional deps, MCV)
             Some("upper(name), lower(email)"), // stxexprs
-        ).await;
+        )
+        .await;
 
-        assert!(stats_result.is_ok(), "Extended statistics registration should succeed");
+        assert!(
+            stats_result.is_ok(),
+            "Extended statistics registration should succeed"
+        );
         let stats_metadata = stats_result.unwrap();
         assert_eq!(stats_metadata.stxname, "user_stats");
         assert_eq!(stats_metadata.stxrelid, 16384);
@@ -3993,15 +4402,19 @@ mod tests {
         // Test extended statistics data registration
         let stats_data_result = register_extended_statistic_data(
             &ctx,
-            stats_metadata.oid, // stxoid
-            false,              // stxdinherit
+            stats_metadata.oid,                   // stxoid
+            false,                                // stxdinherit
             Some("{\"1,2\": 0.5, \"1,3\": 0.3}"), // stxdndistinct
-            Some("{\"1\": [2, 3]}"),             // stxddependencies
+            Some("{\"1\": [2, 3]}"),              // stxddependencies
             Some("{\"most_common\": [[\"John\", \"Doe\"], [\"Jane\", \"Smith\"]]}"), // stxdmcv
-            None,               // stxdexpr
-        ).await;
+            None,                                 // stxdexpr
+        )
+        .await;
 
-        assert!(stats_data_result.is_ok(), "Extended statistics data registration should succeed");
+        assert!(
+            stats_data_result.is_ok(),
+            "Extended statistics data registration should succeed"
+        );
         let stats_data_metadata = stats_data_result.unwrap();
         assert_eq!(stats_data_metadata.stxoid, stats_metadata.oid);
         assert_eq!(stats_data_metadata.stxdinherit, false);
@@ -4022,12 +4435,15 @@ mod tests {
 
         // Test publication namespace registration
         let pub_ns_result = register_publication_namespace(
-            &ctx,
-            16500,  // pnpubid (publication OID)
-            2200,   // pnnspid (namespace OID - public)
-        ).await;
+            &ctx, 16500, // pnpubid (publication OID)
+            2200,  // pnnspid (namespace OID - public)
+        )
+        .await;
 
-        assert!(pub_ns_result.is_ok(), "Publication namespace registration should succeed");
+        assert!(
+            pub_ns_result.is_ok(),
+            "Publication namespace registration should succeed"
+        );
         let pub_ns_metadata = pub_ns_result.unwrap();
         assert_eq!(pub_ns_metadata.pnpubid, 16500);
         assert_eq!(pub_ns_metadata.pnnspid, 2200);
@@ -4035,11 +4451,15 @@ mod tests {
         // Test replication origin registration
         let repl_origin_result = register_replication_origin(
             &ctx,
-            1,                  // roident
-            "my_replication",   // roname
-        ).await;
+            1,                // roident
+            "my_replication", // roname
+        )
+        .await;
 
-        assert!(repl_origin_result.is_ok(), "Replication origin registration should succeed");
+        assert!(
+            repl_origin_result.is_ok(),
+            "Replication origin registration should succeed"
+        );
         let repl_origin_metadata = repl_origin_result.unwrap();
         assert_eq!(repl_origin_metadata.roident, 1);
         assert_eq!(repl_origin_metadata.roname, "my_replication");
@@ -4047,13 +4467,17 @@ mod tests {
         // Test subscription relation registration
         let sub_rel_result = register_subscription_rel(
             &ctx,
-            16600,  // srsubid (subscription OID)
-            16384,  // srrelid (relation OID)
-            's',    // srsubstate (synchronized)
+            16600,            // srsubid (subscription OID)
+            16384,            // srrelid (relation OID)
+            's',              // srsubstate (synchronized)
             Some("0/123456"), // srsublsn
-        ).await;
+        )
+        .await;
 
-        assert!(sub_rel_result.is_ok(), "Subscription relation registration should succeed");
+        assert!(
+            sub_rel_result.is_ok(),
+            "Subscription relation registration should succeed"
+        );
         let sub_rel_metadata = sub_rel_result.unwrap();
         assert_eq!(sub_rel_metadata.srsubid, 16600);
         assert_eq!(sub_rel_metadata.srrelid, 16384);
@@ -4064,30 +4488,48 @@ mod tests {
     #[test]
     fn test_phase4c_final_oid_allocation() {
         // Test Phase 4C OID allocation for all remaining features
-        
+
         // Text search OIDs
         let ts_config_oid1 = get_or_allocate_ts_config_oid("english").unwrap();
         let ts_config_oid2 = get_or_allocate_ts_config_oid("english").unwrap();
-        assert_eq!(ts_config_oid1, ts_config_oid2, "TS config OIDs should be consistent");
+        assert_eq!(
+            ts_config_oid1, ts_config_oid2,
+            "TS config OIDs should be consistent"
+        );
 
         let ts_dict_oid1 = get_or_allocate_ts_dict_oid("english_stem").unwrap();
         let ts_dict_oid2 = get_or_allocate_ts_dict_oid("english_stem").unwrap();
-        assert_eq!(ts_dict_oid1, ts_dict_oid2, "TS dict OIDs should be consistent");
+        assert_eq!(
+            ts_dict_oid1, ts_dict_oid2,
+            "TS dict OIDs should be consistent"
+        );
 
         // Extended statistics OIDs
         let ext_stats_oid1 = get_or_allocate_ext_stats_oid("user_stats").unwrap();
         let ext_stats_oid2 = get_or_allocate_ext_stats_oid("user_stats").unwrap();
-        assert_eq!(ext_stats_oid1, ext_stats_oid2, "Extended stats OIDs should be consistent");
+        assert_eq!(
+            ext_stats_oid1, ext_stats_oid2,
+            "Extended stats OIDs should be consistent"
+        );
 
         // Ensure different objects get different OIDs
         let different_config_oid = get_or_allocate_ts_config_oid("spanish").unwrap();
-        assert_ne!(ts_config_oid1, different_config_oid, "Different TS configs should have different OIDs");
+        assert_ne!(
+            ts_config_oid1, different_config_oid,
+            "Different TS configs should have different OIDs"
+        );
 
         let different_dict_oid = get_or_allocate_ts_dict_oid("spanish_stem").unwrap();
-        assert_ne!(ts_dict_oid1, different_dict_oid, "Different TS dicts should have different OIDs");
+        assert_ne!(
+            ts_dict_oid1, different_dict_oid,
+            "Different TS dicts should have different OIDs"
+        );
 
         let different_stats_oid = get_or_allocate_ext_stats_oid("product_stats").unwrap();
-        assert_ne!(ext_stats_oid1, different_stats_oid, "Different extended stats should have different OIDs");
+        assert_ne!(
+            ext_stats_oid1, different_stats_oid,
+            "Different extended stats should have different OIDs"
+        );
     }
 
     #[test]

@@ -594,7 +594,8 @@ fn batch_to_row_stream(
                                 let secs = v / 1_000_000;
                                 let micros = (v % 1_000_000) as u32;
                                 let ts = chrono::DateTime::from_timestamp(secs, micros * 1_000)
-                                        .unwrap().naive_utc();
+                                    .unwrap()
+                                    .naive_utc();
                                 Some(ts.format("%Y-%m-%d %H:%M:%S%.6f").to_string())
                             };
                             encoder.encode_field(&value).unwrap();
@@ -612,7 +613,8 @@ fn batch_to_row_stream(
                                 let secs = v / 1_000;
                                 let millis = (v % 1_000) as u32;
                                 let ts = chrono::DateTime::from_timestamp(secs, millis * 1_000_000)
-                                .unwrap().naive_utc();
+                                    .unwrap()
+                                    .naive_utc();
                                 Some(ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string())
                             };
                             encoder.encode_field(&value).unwrap();
@@ -630,7 +632,8 @@ fn batch_to_row_stream(
                                 let secs = v / 1_000_000_000;
                                 let nanos = (v % 1_000_000_000) as u32;
                                 let ts = chrono::DateTime::from_timestamp(secs, nanos)
-                                    .unwrap().naive_utc();
+                                    .unwrap()
+                                    .naive_utc();
                                 Some(ts.format("%Y-%m-%d %H:%M:%S%.9f").to_string())
                             };
                             encoder.encode_field(&value).unwrap();

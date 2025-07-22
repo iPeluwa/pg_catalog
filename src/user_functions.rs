@@ -1,10 +1,7 @@
 // Collection of custom UDF and UDTF implementations.
 // Provides functions like oid(), pg_get_array and others so queries behave like PostgreSQL.
 // Added to extend DataFusion with features required by pg_catalog emulation.
-use arrow::array::{
-    as_string_array, Array, ArrayRef, StringBuilder,
-    TimestampMicrosecondArray,
-};
+use arrow::array::{as_string_array, Array, ArrayRef, StringBuilder, TimestampMicrosecondArray};
 use arrow::datatypes::DataType as ArrowDataType;
 use async_trait::async_trait;
 use datafusion::arrow::array::{Int64Array, Int64Builder};
@@ -2216,7 +2213,7 @@ mod tests {
     #[tokio::test]
     async fn test_pg_get_array_constant() -> Result<()> {
         use arrow::array::ListArray;
-        
+
         let ctx = make_ctx().await?;
         let batches = ctx
             .sql("SELECT pg_get_array('hello') AS v;")
@@ -2237,7 +2234,7 @@ mod tests {
     #[tokio::test]
     async fn test_pg_get_array_subquery() -> Result<()> {
         use arrow::array::ListArray;
-        
+
         let ctx = make_ctx().await?;
 
         let sql = rewrite_subquery_as_cte(

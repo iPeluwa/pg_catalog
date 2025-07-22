@@ -50,10 +50,9 @@ use crate::user_functions::{
 };
 
 use crate::pg_catalog_helpers::{
-    load_pg_type_data, load_pg_description_data, 
-    get_pg_type_batches, get_pg_description_batches,
-    ensure_static_table_oid_consistency, ensure_enhanced_oid_consistency,
-    initialize_system_catalog
+    ensure_enhanced_oid_consistency, ensure_static_table_oid_consistency,
+    get_pg_description_batches, get_pg_type_batches, initialize_system_catalog,
+    load_pg_description_data, load_pg_type_data,
 };
 
 use crate::scalar_to_cte::rewrite_subquery_as_cte;
@@ -769,36 +768,49 @@ fn register_catalogs_from_schemas(
                             // Pre-load pg_type data to ensure OID consistency
                             if let Err(e) = load_pg_type_data() {
                                 log::warn!("Failed to pre-load pg_type data: {}", e);
-                                batches  // Use original batches if loading fails
+                                batches // Use original batches if loading fails
                             } else {
                                 // Retrieve cached data after loading
                                 match get_pg_type_batches() {
                                     Ok(Some(cached_batches)) => {
-                                        log::debug!("Using cached pg_type data with {} batches", cached_batches.len());
+                                        log::debug!(
+                                            "Using cached pg_type data with {} batches",
+                                            cached_batches.len()
+                                        );
                                         cached_batches
                                     }
                                     Ok(None) => {
-                                        log::warn!("No cached pg_type data found, using original batches");
+                                        log::warn!(
+                                            "No cached pg_type data found, using original batches"
+                                        );
                                         batches
                                     }
                                     Err(e) => {
-                                        log::warn!("Failed to get cached pg_type data: {}, using original", e);
+                                        log::warn!(
+                                            "Failed to get cached pg_type data: {}, using original",
+                                            e
+                                        );
                                         batches
                                     }
                                 }
                             }
                         }
                         "pg_description" => {
-                            log::info!("Registering pg_description with lazy loading and OID cache");
+                            log::info!(
+                                "Registering pg_description with lazy loading and OID cache"
+                            );
                             // Pre-load pg_description data to ensure OID consistency
                             if let Err(e) = load_pg_description_data() {
                                 log::warn!("Failed to pre-load pg_description data: {}", e);
-                                batches  // Use original batches if loading fails
+                                batches // Use original batches if loading fails
                             } else {
                                 // Retrieve cached data after loading
                                 match get_pg_description_batches() {
                                     Ok(Some(cached_batches)) => {
-                                        log::debug!("Using cached pg_description data with {} batches", cached_batches.len());
+                                        log::debug!(
+                                            "Using cached pg_description data with {} batches",
+                                            cached_batches.len()
+                                        );
                                         cached_batches
                                     }
                                     Ok(None) => {
@@ -812,7 +824,7 @@ fn register_catalogs_from_schemas(
                                 }
                             }
                         }
-                        _ => batches
+                        _ => batches,
                     }
                 } else {
                     batches
