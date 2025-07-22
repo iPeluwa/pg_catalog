@@ -411,78 +411,9 @@ pub enum DependencyType {
 // 50000+: Dynamic user objects (tables, schemas, etc.)
 static NEXT_OID: AtomicI32 = AtomicI32::new(50010);
 
-// OID caches for consistent allocation
+// Minimal essential caches
 lazy_static::lazy_static! {
     static ref TYPE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref DESCRIPTION_OID_CACHE: Mutex<HashMap<(i32, i32, i32), i32>> = Mutex::new(HashMap::new());
-
-    // Phase 3: Enhanced dynamic table caches
-    static ref CONSTRAINT_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref INDEX_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref DEPENDENCY_OID_CACHE: Mutex<HashMap<(i32, i32), i32>> = Mutex::new(HashMap::new());
-
-    // Enhanced metadata cache for complete table information
-    static ref TABLE_METADATA_CACHE: Mutex<HashMap<i32, EnhancedTableMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4A: Critical catalog table caches
-    static ref DATABASE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TABLESPACE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref USER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-
-    // Phase 4A: Enhanced metadata caches
-    static ref DATABASE_METADATA_CACHE: Mutex<HashMap<i32, DatabaseMetadata>> = Mutex::new(HashMap::new());
-    static ref TABLESPACE_METADATA_CACHE: Mutex<HashMap<i32, TablespaceMetadata>> = Mutex::new(HashMap::new());
-    static ref USER_METADATA_CACHE: Mutex<HashMap<i32, UserMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4B: High priority table caches
-    static ref FUNCTION_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref OPERATOR_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref AGGREGATE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TRIGGER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-
-    // Phase 4B: Enhanced metadata caches
-    static ref FUNCTION_METADATA_CACHE: Mutex<HashMap<i32, FunctionMetadata>> = Mutex::new(HashMap::new());
-    static ref OPERATOR_METADATA_CACHE: Mutex<HashMap<i32, OperatorMetadata>> = Mutex::new(HashMap::new());
-    static ref AGGREGATE_METADATA_CACHE: Mutex<HashMap<i32, AggregateMetadata>> = Mutex::new(HashMap::new());
-    static ref TRIGGER_METADATA_CACHE: Mutex<HashMap<i32, TriggerMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Security and access control caches
-    static ref AUTH_MEMBER_CACHE: Mutex<HashMap<(i32, i32), AuthMemberMetadata>> = Mutex::new(HashMap::new());
-    static ref DEFAULT_ACL_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref DEFAULT_ACL_CACHE: Mutex<HashMap<i32, DefaultAclMetadata>> = Mutex::new(HashMap::new());
-    static ref INIT_PRIVS_CACHE: Mutex<HashMap<(i32, i32, i32), InitPrivsMetadata>> = Mutex::new(HashMap::new());
-    static ref SEC_LABEL_CACHE: Mutex<HashMap<(i32, i32, i32, String), SecLabelMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Advanced table features caches
-    static ref PARTITIONED_TABLE_CACHE: Mutex<HashMap<i32, PartitionedTableMetadata>> = Mutex::new(HashMap::new());
-    static ref EVENT_TRIGGER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref EVENT_TRIGGER_CACHE: Mutex<HashMap<i32, EventTriggerMetadata>> = Mutex::new(HashMap::new());
-    static ref USER_MAPPING_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref USER_MAPPING_CACHE: Mutex<HashMap<i32, UserMappingMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Large object caches
-    static ref LARGE_OBJECT_CACHE: Mutex<HashMap<i32, LargeObjectMetadata>> = Mutex::new(HashMap::new());
-    static ref LARGE_OBJECT_DATA_CACHE: Mutex<HashMap<(i32, i32), LargeObjectDataMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Text search system caches
-    static ref TS_CONFIG_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TS_CONFIG_CACHE: Mutex<HashMap<i32, TextSearchConfigMetadata>> = Mutex::new(HashMap::new());
-    static ref TS_DICT_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TS_DICT_CACHE: Mutex<HashMap<i32, TextSearchDictMetadata>> = Mutex::new(HashMap::new());
-    static ref TS_PARSER_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TS_PARSER_CACHE: Mutex<HashMap<i32, TextSearchParserMetadata>> = Mutex::new(HashMap::new());
-    static ref TS_TEMPLATE_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref TS_TEMPLATE_CACHE: Mutex<HashMap<i32, TextSearchTemplateMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Extended statistics caches
-    static ref EXT_STATS_OID_CACHE: Mutex<HashMap<String, i32>> = Mutex::new(HashMap::new());
-    static ref EXT_STATS_CACHE: Mutex<HashMap<i32, ExtendedStatisticMetadata>> = Mutex::new(HashMap::new());
-    static ref EXT_STATS_DATA_CACHE: Mutex<HashMap<i32, ExtendedStatisticDataMetadata>> = Mutex::new(HashMap::new());
-
-    // Phase 4C: Replication features caches
-    static ref PUB_NAMESPACE_CACHE: Mutex<HashMap<(i32, i32), PublicationNamespaceMetadata>> = Mutex::new(HashMap::new());
-    static ref REPLICATION_ORIGIN_CACHE: Mutex<HashMap<String, ReplicationOriginMetadata>> = Mutex::new(HashMap::new());
-    static ref SUBSCRIPTION_REL_CACHE: Mutex<HashMap<(i32, i32), SubscriptionRelMetadata>> = Mutex::new(HashMap::new());
 }
 
 
@@ -531,21 +462,7 @@ pub fn get_or_allocate_type_oid(type_name: &str) -> DFResult<i32> {
     Ok(new_oid)
 }
 
-/// Get or allocate a consistent OID for a pg_description entry
-pub fn get_or_allocate_description_oid(objoid: i32, classoid: i32, objsubid: i32) -> DFResult<i32> {
-    let mut cache = DESCRIPTION_OID_CACHE.lock().unwrap();
-    let key = (objoid, classoid, objsubid);
 
-    if let Some(&existing_oid) = cache.get(&key) {
-        return Ok(existing_oid);
-    }
-
-    let new_oid = NEXT_OID.fetch_add(1, Ordering::SeqCst);
-    validate_oid_range(new_oid, false)?;
-
-    cache.insert(key, new_oid);
-    Ok(new_oid)
-}
 
 
 
@@ -598,12 +515,8 @@ pub async fn register_pg_description_with_oid_cache(
 ) -> DFResult<()> {
 
 
-    // Get consistent OID for this description entry
-    let desc_oid = get_or_allocate_description_oid(objoid, classoid, objsubid)?;
-
     log::debug!(
-        "Registering pg_description entry with OID {} for object {}",
-        desc_oid,
+        "Registering pg_description entry for object {}",
         objoid
     );
 
